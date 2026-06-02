@@ -5,8 +5,10 @@ from puzzle_tb.schema import Category, Move, TablebaseResponse
 from puzzle_tb.verify import PuzzleThemes, PuzzlerPosition, verify_puzzle
 
 
-def mv(uci: str, category: Category) -> Move:
-    return Move(uci=uci, san=uci, category=category, dtm=None, dtz=None, checkmate=False, stalemate=False)
+def mv(uci: str, category: Category, *, checkmate: bool = False) -> Move:
+    return Move(
+        uci=uci, san=uci, category=category, dtm=None, dtz=None, checkmate=checkmate, stalemate=False
+    )
 
 
 def position(
@@ -83,6 +85,26 @@ class NormalPuzzleTest(unittest.TestCase):
             "a1a8",
             [mv("a1a8", Category.LOSS), mv("a1b8", Category.LOSS), mv("a1c8", Category.MAYBE_LOSS)],
         )
+        self.assertEqual(reasons(pos), ["NOT_UNIQUE:loss@1"])
+
+
+class CheckmateExceptionTest(unittest.TestCase):
+    def test_immediate_mate_ok_despite_other_mates(self) -> None:
+        pos = position(
+            1,
+            "a1a8",
+            [mv("a1a8", Category.LOSS, checkmate=True), mv("a1b8", Category.LOSS, checkmate=True)],
+        )
+        self.assertEqual(reasons(pos), [])
+
+    def test_immediate_mate_ok_despite_longer_wins(self) -> None:
+        pos = position(
+            1, "a1a8", [mv("a1a8", Category.LOSS, checkmate=True), mv("a1b8", Category.LOSS)]
+        )
+        self.assertEqual(reasons(pos), [])
+
+    def test_non_mate_still_checked_for_uniqueness(self) -> None:
+        pos = position(1, "a1a8", [mv("a1a8", Category.LOSS), mv("a1b8", Category.LOSS)])
         self.assertEqual(reasons(pos), ["NOT_UNIQUE:loss@1"])
 
 

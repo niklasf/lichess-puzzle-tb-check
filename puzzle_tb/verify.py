@@ -80,7 +80,11 @@ def _verify_position(position: PuzzlerPosition, themes: PuzzleThemes) -> list[st
     if played is None:
         return [f"MALFORMED@{i}"]
 
-    if themes.equality:
+    if played.checkmate:
+        # An immediate checkmate is always an acceptable solution, regardless of
+        # other mating moves or longer winning alternatives.
+        reasons = []
+    elif themes.equality:
         reasons = _verify_equality(i, played, moves, position.capture_seen)
     else:
         reasons = _verify_winning(i, played, moves, position.capture_seen)
