@@ -1,4 +1,4 @@
-"""Always-on progress reporting to stderr.
+"""Progress reporting to stdout and stderr.
 
 Shows a progress bar over rows scanned, throughput in puzzles/s and tablebase
 requests/s (averaged over a sliding window so the figures stay steady), and an

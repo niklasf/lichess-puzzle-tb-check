@@ -1,3 +1,3 @@
-"""Verify Lichess puzzles against chess tablebase data."""
+"""Verify Lichess puzzles against tablebase data."""
 
 __version__ = "0.1.0"

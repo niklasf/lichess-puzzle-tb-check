@@ -1,4 +1,4 @@
-# lichess-puzzles-tb
+# lichess-puzzle-tb
 
 Verify Lichess puzzles against tablebase data.
 
@@ -43,7 +43,7 @@ database at any time.
 | `DTM_MISMATCH:<dtm>` | a `mateInX` puzzle whose DTM does not match the expected mate distance (exact for mateIn1–4; a lower bound for mateIn5 = "5 or more") |
 | `MALFORMED` | a recorded move is illegal / not offered by the tablebase |
 
-### Coverage and the "verify the covered tail" policy
+## Tablebase coverage
 
 A position is *verifiable* if it is directly covered (≤7 pieces via Syzygy, or an
 8-piece **op1** position) or is a ≤9-piece boundary position with a capture into
@@ -51,7 +51,7 @@ covered territory (9→8-op1, or 8→7). The verifier checks every verifiable
 puzzler-to-move position and ignores the rest; a puzzle with no verifiable
 position is skipped.
 
-### Cleanness, the 50-move rule, and unknowns
+## Cleanness, the 50-move rule, and unknowns
 
 `maybe-win`/`syzygy-win` (and their losing variants) are treated as **clean** —
 the WDL is known, only DTZ precision is fuzzy. The genuinely 50-move-distorted
