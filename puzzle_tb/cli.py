@@ -7,7 +7,7 @@ import asyncio
 import sys
 from collections.abc import Sequence
 
-from .runner import Config, run
+from .runner import Config, InputError, run
 from .tablebase import DEFAULT_ENDPOINT, FatalTablebaseError
 
 
@@ -54,6 +54,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     config = _build_config(argv)
     try:
         asyncio.run(run(config))
+    except (InputError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     except FatalTablebaseError as exc:
         print(f"\nfatal: {exc}", file=sys.stderr)
         print("Stopped without mis-verifying. Re-run with the same --out to resume.", file=sys.stderr)

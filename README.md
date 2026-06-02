@@ -27,7 +27,10 @@ uv pip install -e .
 puzzle-tb lichess_db_puzzle.csv.zst --out report.csv
 ```
 
-The input may be a plain `.csv` or a `.csv.zst` (streamed). The run is
+The input may be a plain `.csv` or a `.csv.zst` (streamed). Only the `PuzzleId`,
+`FEN`, `Moves`, and `Themes` columns are used; extra columns and column
+reordering are fine, and a missing required column is reported with a clear
+error. The run is
 **resumable**: any `PuzzleId` already present in `--out` is skipped, so an updated
 database only verifies the new puzzles. The output is flushed after every puzzle,
 so an interrupt (Ctrl-C) loses at most the in-flight puzzles — just re-run with

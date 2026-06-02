@@ -26,6 +26,15 @@ from .tablebase import FatalTablebaseError, TablebaseClient
 from .verify import PuzzleThemes, PuzzlerPosition, verify_puzzle
 
 
+# The only input columns we depend on; any others (Rating, GameUrl, ...) are
+# ignored, and column order does not matter (rows are read by name).
+REQUIRED_COLUMNS = ("PuzzleId", "FEN", "Moves", "Themes")
+
+
+class InputError(Exception):
+    """The input CSV is unusable (e.g. missing a required column)."""
+
+
 @dataclass(frozen=True, slots=True)
 class Config:
     """Run configuration, populated from the CLI."""
@@ -67,9 +76,18 @@ def count_rows(path: str) -> int:
 
 
 def read_rows(path: str) -> Iterator[dict[str, str]]:
-    """Yield puzzle rows as dicts keyed by CSV column name."""
+    """Yield puzzle rows as dicts keyed by CSV column name.
+
+    Robust to extra columns and column reordering; only :data:`REQUIRED_COLUMNS`
+    are used. Raises :class:`InputError` if a required column is absent, so
+    callers can thereafter assume those keys are present.
+    """
     with _open_text(path) as handle:
-        yield from csv.DictReader(handle)
+        reader = csv.DictReader(handle)
+        missing = [c for c in REQUIRED_COLUMNS if c not in set(reader.fieldnames or ())]
+        if missing:
+            raise InputError(f"input CSV is missing required column(s): {', '.join(missing)}")
+        yield from reader
 
 
 def load_done(path: str) -> set[str]:
@@ -220,7 +238,7 @@ async def run(config: Config) -> None:
                             group.create_task(
                                 _process_puzzle(client, puzzle, writer, progress, semaphore)
                             )
-                except* FatalTablebaseError as group_error:
+                except* (FatalTablebaseError, InputError) as group_error:
                     # Surface a single, plain error for the CLI to report.
                     raise group_error.exceptions[0] from None
         finally:
@@ -244,7 +262,7 @@ def _prepare(row: dict[str, str], done: set[str]) -> _Puzzle | None:
         return None
     return _Puzzle(
         puzzle_id=puzzle_id,
-        themes=PuzzleThemes.parse(row.get("Themes", "")),
+        themes=PuzzleThemes.parse(row["Themes"]),
         positions=positions,
         reasons=errors,
     )
