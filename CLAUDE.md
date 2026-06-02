@@ -71,8 +71,8 @@ uv run puzzle-tb INPUT.csv[.zst] --out report.csv [--endpoint URL] [--max-rps R]
   → retry with backoff (`--retries`). **4xx other than 429** (e.g. 404, 400) →
   **immediately fatal** (the request itself is wrong). Retries exhausted or a
   malformed response → fatal.
-- On any fatal error: stop, print it, exit non-zero. Never mis-verify. Re-run to
-  resume. Default `--timeout` 60s.
+- On any fatal error: stop, print it, exit non-zero. Do not record the puzzle.
+  Re-run with the same `--out` to retry. Default `--timeout` 60s.
 
 ## Verdict rules
 

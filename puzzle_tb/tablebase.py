@@ -4,7 +4,7 @@ Provides configurable rate limiting (a token bucket for requests/second and a
 semaphore for concurrent requests in flight), a full-minute pause on HTTP 429,
 and bounded retries on transient errors. If retries are exhausted -- or the
 response is malformed -- it raises :class:`FatalTablebaseError` so the caller can
-stop and report rather than risk mis-verifying a puzzle.
+stop and report.
 """
 
 from __future__ import annotations

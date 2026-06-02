@@ -3,7 +3,7 @@
 Resumable: existing ``PuzzleId``s in the output CSV are skipped. Interruptible:
 the output is flushed after every row, so at most the in-flight puzzles are lost.
 On an unrecoverable tablebase error the run stops and reports rather than
-mis-verifying anything.
+recording unverified puzzles.
 """
 
 from __future__ import annotations

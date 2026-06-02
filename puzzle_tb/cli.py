@@ -54,7 +54,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     except FatalTablebaseError as exc:
         print(f"\nfatal: {exc}", file=sys.stderr)
-        print("Stopped without mis-verifying. Re-run with the same --out to resume.", file=sys.stderr)
+        print("Re-run with the same --out to retry.", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("\nInterrupted. Re-run with the same --out to resume.", file=sys.stderr)
