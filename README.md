@@ -41,7 +41,7 @@ the same `--out` to continue.
 | Option | Default | Meaning |
 |---|---|---|
 | `--endpoint URL` | `https://tablebase.lichess.ovh` | lila-tablebase base URL; requests go to `<endpoint>/standard` (point at a local instance if you have one) |
-| `--max-rps R` | `1.5` | max requests/second (`0` = unlimited) |
+| `--max-rps R` | `0.95` | max requests/second (`0` = unlimited) |
 | `--concurrency N` | `20` | max requests in flight |
 | `--timeout S` | `60` | per-request timeout (seconds) |
 | `--retries N` | `5` | retries per request on transient errors |

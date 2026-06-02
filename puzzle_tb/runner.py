@@ -48,7 +48,6 @@ class Config:
     timeout: float
     retries: int
     limit: int | None
-    in_flight: int
 
 
 @dataclass(slots=True)
@@ -259,7 +258,11 @@ async def run(config: Config) -> None:
         progress = Progress(total, lambda: client.request_count)
         stop = asyncio.Event()
         renderer = asyncio.create_task(_render_loop(progress, stop))
-        semaphore = asyncio.Semaphore(config.in_flight)
+        # Bound concurrent puzzles by the request concurrency: a puzzle only makes
+        # progress by holding request slots, so this is enough to saturate the
+        # client, and the producer then blocks here -- backpressured by how fast
+        # the rate-limited API drains in-flight puzzles.
+        semaphore = asyncio.Semaphore(config.concurrency)
         try:
             with ResultWriter(config.output_path) as writer:
                 try:

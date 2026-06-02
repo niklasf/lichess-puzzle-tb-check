@@ -24,19 +24,15 @@ def _build_config(argv: Sequence[str] | None) -> Config:
         help=f"lila-tablebase base URL; requests go to <endpoint>/standard (default: {DEFAULT_ENDPOINT})",
     )
     parser.add_argument(
-        "--max-rps", type=float, default=1.5, help="max requests/second; 0 = unlimited (default: 1.5)"
+        "--max-rps", type=float, default=0.95, help="max requests/second; 0 = unlimited (default: 0.95)"
     )
     parser.add_argument("--concurrency", type=int, default=20, help="max requests in flight (default: 20)")
     parser.add_argument("--timeout", type=float, default=60.0, help="per-request timeout in seconds (default: 60)")
     parser.add_argument("--retries", type=int, default=5, help="retries per request on transient errors (default: 5)")
     parser.add_argument("--limit", type=int, default=None, help="only scan the first N rows")
-    parser.add_argument(
-        "--in-flight", type=int, default=None, help="max puzzles processed concurrently (default: 4x concurrency)"
-    )
     args = parser.parse_args(argv)
 
     max_rps = args.max_rps if args.max_rps and args.max_rps > 0 else None
-    in_flight = args.in_flight if args.in_flight is not None else args.concurrency * 4
     return Config(
         input_path=args.input,
         output_path=args.out,
@@ -46,7 +42,6 @@ def _build_config(argv: Sequence[str] | None) -> Config:
         timeout=args.timeout,
         retries=args.retries,
         limit=args.limit,
-        in_flight=in_flight,
     )
 
 
