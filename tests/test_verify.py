@@ -2,7 +2,14 @@ import unittest
 from collections.abc import Sequence
 
 from puzzle_tb.schema import Category, Move, TablebaseResponse
-from puzzle_tb.verify import PuzzleThemes, PuzzlerPosition, verify_puzzle
+from puzzle_tb.verify import (
+    AtLeastMate,
+    ExactMate,
+    MateRequirement,
+    PuzzleThemes,
+    PuzzlerPosition,
+    verify_puzzle,
+)
 
 
 def mv(uci: str, category: Category, *, checkmate: bool = False) -> Move:
@@ -28,21 +35,25 @@ def position(
 
 
 def reasons(
-    pos: PuzzlerPosition, *, equality: bool = False, mate_in: int | None = None
+    pos: PuzzlerPosition, *, equality: bool = False, mate: MateRequirement | None = None
 ) -> list[str]:
-    return verify_puzzle([pos], PuzzleThemes(equality=equality, mate_in=mate_in))
+    return verify_puzzle([pos], PuzzleThemes(equality=equality, mate=mate))
 
 
 class ThemesParseTest(unittest.TestCase):
-    def test_parse(self) -> None:
+    def test_parse_exact(self) -> None:
         themes = PuzzleThemes.parse("crushing mateIn3 long endgame")
         self.assertFalse(themes.equality)
-        self.assertEqual(themes.mate_in, 3)
+        self.assertEqual(themes.mate, ExactMate(3))
+
+    def test_parse_lower_bound(self) -> None:
+        # mateIn5 means "mate in 5 or more".
+        self.assertEqual(PuzzleThemes.parse("mate mateIn5").mate, AtLeastMate(5))
 
     def test_equality(self) -> None:
         themes = PuzzleThemes.parse("equality endgame")
         self.assertTrue(themes.equality)
-        self.assertIsNone(themes.mate_in)
+        self.assertIsNone(themes.mate)
 
 
 class NormalPuzzleTest(unittest.TestCase):
@@ -188,22 +199,47 @@ class EqualityPuzzleTest(unittest.TestCase):
 
 
 class MateTest(unittest.TestCase):
-    def test_dtm_match(self) -> None:
+    def test_exact_dtm_match(self) -> None:
         pos = position(1, "a1a8", [mv("a1a8", Category.LOSS)], dtm=3)
-        self.assertEqual(reasons(pos, mate_in=2), [])
+        self.assertEqual(reasons(pos, mate=ExactMate(2)), [])
 
-    def test_dtm_mismatch(self) -> None:
+    def test_exact_dtm_mismatch(self) -> None:
         pos = position(1, "a1a8", [mv("a1a8", Category.LOSS)], dtm=5)
-        self.assertEqual(reasons(pos, mate_in=2), ["DTM_MISMATCH:5@1"])
+        self.assertEqual(reasons(pos, mate=ExactMate(2)), ["DTM_MISMATCH:5@1"])
 
     def test_dtm_countdown_on_tail(self) -> None:
         # Second puzzler move (index 3) of a mate-in-2: remaining 1 ply, dtm == 1.
         pos = position(3, "a1a8", [mv("a1a8", Category.LOSS)], dtm=1)
-        self.assertEqual(reasons(pos, mate_in=2), [])
+        self.assertEqual(reasons(pos, mate=ExactMate(2)), [])
 
     def test_dtm_absent_skips_check(self) -> None:
         pos = position(1, "a1a8", [mv("a1a8", Category.LOSS)], dtm=None)
-        self.assertEqual(reasons(pos, mate_in=2), [])
+        self.assertEqual(reasons(pos, mate=ExactMate(2)), [])
+
+    def test_lower_bound_allows_longer_mate(self) -> None:
+        # mateIn5 = 5 or more: a dtm well above the bound (>= 9) is fine.
+        pos = position(1, "a1a8", [mv("a1a8", Category.LOSS)], dtm=15)
+        self.assertEqual(reasons(pos, mate=AtLeastMate(5)), [])
+
+    def test_lower_bound_rejects_shorter_mate(self) -> None:
+        # A mate faster than the claimed minimum (dtm 7 < 9) is mislabelled.
+        pos = position(1, "a1a8", [mv("a1a8", Category.LOSS)], dtm=7)
+        self.assertEqual(reasons(pos, mate=AtLeastMate(5)), ["DTM_MISMATCH:7@1"])
+
+    def test_lower_bound_countdown(self) -> None:
+        # Second move of mateIn5: remaining 4-or-more -> dtm >= 7.
+        pos = position(3, "a1a8", [mv("a1a8", Category.LOSS)], dtm=7)
+        self.assertEqual(reasons(pos, mate=AtLeastMate(5)), [])
+
+    def test_immediate_mate_still_checked_for_count(self) -> None:
+        # Checkmate is exempt from uniqueness, but a mateIn2 label with an
+        # immediate mate (dtm 1, expected 3) is still a DTM mismatch.
+        pos = position(1, "a1a8", [mv("a1a8", Category.LOSS, checkmate=True)], dtm=1)
+        self.assertEqual(reasons(pos, mate=ExactMate(2)), ["DTM_MISMATCH:1@1"])
+
+    def test_immediate_mate_correct_count_ok(self) -> None:
+        pos = position(1, "a1a8", [mv("a1a8", Category.LOSS, checkmate=True)], dtm=1)
+        self.assertEqual(reasons(pos, mate=ExactMate(1)), [])
 
 
 if __name__ == "__main__":

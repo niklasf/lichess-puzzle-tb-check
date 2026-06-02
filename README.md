@@ -7,7 +7,9 @@ the puzzles whose positions are within tablebase coverage, probes a
 [lila-tablebase](https://github.com/lichess-org/lila-tablebase) HTTP API, and
 records — per puzzle — whether every puzzler move is the **unique winning move**
 (or the **unique drawing move** for `equality` puzzles), plus a DTM check for
-`mateInX` puzzles.
+`mateInX` puzzles. An immediate checkmate is always accepted regardless of
+alternatives (but must still match the mate count), and `mateIn5` means "mate in
+5 or more", so its DTM check is a lower bound.
 
 ## Requirements
 
@@ -63,7 +65,7 @@ the puzzle's `Moves` and `detail` is the exact tablebase category (or DTM).
 | `WRONG_MOVE:<cat>` | a different move wins/holds while the played move does not |
 | `EQUALITY_HAS_WIN:<cat>` | an `equality` puzzle where a winning move exists |
 | `EQUALITY_NOT_DRAW:<cat>` | an `equality` puzzle whose played move does not cleanly draw |
-| `DTM_MISMATCH:<dtm>` | a `mateInX` puzzle whose DTM does not match the expected mate distance |
+| `DTM_MISMATCH:<dtm>` | a `mateInX` puzzle whose DTM does not match the expected mate distance (exact for mateIn1–4; a lower bound for mateIn5 = "5 or more") |
 | `MALFORMED` | a recorded move is illegal / not offered by the tablebase |
 
 ### Coverage and the "verify the covered tail" policy

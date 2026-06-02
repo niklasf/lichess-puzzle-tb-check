@@ -40,23 +40,45 @@ class PuzzlerPosition:
 
 
 @dataclass(frozen=True, slots=True)
+class ExactMate:
+    """A mate in exactly ``moves`` winning-side moves (Lichess mateIn1..mateIn4)."""
+
+    moves: int
+
+
+@dataclass(frozen=True, slots=True)
+class AtLeastMate:
+    """A mate in ``moves`` winning-side moves or more (Lichess mateIn5 = 5+)."""
+
+    moves: int
+
+
+# A mate requirement is either an exact count or a lower bound.
+MateRequirement = ExactMate | AtLeastMate
+
+# Lichess caps its mate themes at mateIn5, which therefore means "5 or more".
+_LOWER_BOUND_MATE = 5
+
+
+@dataclass(frozen=True, slots=True)
 class PuzzleThemes:
     """The aspects of a puzzle's themes that affect verification."""
 
     equality: bool
-    mate_in: int | None  # X for a mateInX puzzle, else None
+    mate: MateRequirement | None  # for a mateInX puzzle, else None
 
     @classmethod
     def parse(cls, themes: str) -> PuzzleThemes:
         """Extract the relevant flags from the puzzle's space-separated themes."""
         tokens = themes.split()
-        mate_in: int | None = None
+        mate: MateRequirement | None = None
         for token in tokens:
             match = _MATE_IN_RE.match(token)
             if match is not None:
-                mate_in = int(match.group(1))
+                x = int(match.group(1))
+                mate = AtLeastMate(x) if x >= _LOWER_BOUND_MATE else ExactMate(x)
                 break
-        return cls(equality="equality" in tokens, mate_in=mate_in)
+        return cls(equality="equality" in tokens, mate=mate)
 
 
 def verify_puzzle(
@@ -82,15 +104,16 @@ def _verify_position(position: PuzzlerPosition, themes: PuzzleThemes) -> list[st
 
     if played.checkmate:
         # An immediate checkmate is always an acceptable solution, regardless of
-        # other mating moves or longer winning alternatives.
+        # other mating moves or longer winning alternatives -- but it must still
+        # match the expected mate count (the DTM check below still applies).
         reasons = []
     elif themes.equality:
         reasons = _verify_equality(i, played, moves, position.capture_seen)
     else:
         reasons = _verify_winning(i, played, moves, position.capture_seen)
 
-    if themes.mate_in is not None:
-        reasons.extend(_verify_mate(i, position.response, themes.mate_in))
+    if themes.mate is not None:
+        reasons.extend(_verify_mate(i, position.response, themes.mate))
     return reasons
 
 
@@ -147,18 +170,21 @@ def _verify_equality(
     return reasons
 
 
-def _verify_mate(i: int, response: TablebaseResponse, mate_in: int) -> list[str]:
+def _verify_mate(i: int, response: TablebaseResponse, mate: MateRequirement) -> list[str]:
     """For mateInX, when DTM is known, check the mate countdown at this ply.
 
     X counts winning-side moves from the start; at the j-th puzzler move the
-    remaining count is ``X - j + 1`` and the position's DTM (in plies) must be
-    ``2 * remaining - 1``.
+    remaining count is ``X - j + 1`` and the position's DTM (in plies) is
+    ``2 * remaining - 1``. For an :class:`ExactMate` the DTM must equal that
+    value; for an :class:`AtLeastMate` (mateIn5 = "5 or more", and 4-or-more at
+    the next move, etc.) it must be at least that value.
     """
     dtm = response.dtm
     if dtm is None:
         return []
     j = (i + 1) // 2  # puzzler-move ordinal: Moves[1]->1, Moves[3]->2, ...
-    expected = 2 * (mate_in - j + 1) - 1
-    if dtm != expected:
+    expected = 2 * (mate.moves - j + 1) - 1
+    ok = dtm == expected if isinstance(mate, ExactMate) else dtm >= expected
+    if not ok:
         return [f"DTM_MISMATCH:{dtm}@{i}"]
     return []
