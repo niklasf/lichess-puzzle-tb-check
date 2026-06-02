@@ -2,8 +2,8 @@
 
 Verify Lichess puzzles against chess tablebase data.
 
-Reads the [Lichess puzzle database](https://database.lichess.org/#puzzles), keeps
-the puzzles whose positions are within tablebase coverage, probes a
+Reads a [Lichess puzzle database](https://database.lichess.org/#puzzles) CSV,
+looks at the positions that have tablebase coverage, probes the
 [lila-tablebase](https://github.com/lichess-org/lila-tablebase) HTTP API, and
 records — per puzzle — whether every puzzler move is the **unique winning move**
 (or the **unique drawing move** for `equality` puzzles), plus a DTM check for
@@ -13,8 +13,7 @@ alternatives (but must still match the mate count), and `mateIn5` means "mate in
 
 ## Requirements
 
-- Python 3.14+ (uses the stdlib `compression.zstd` module).
-- `python-chess` and `aiohttp`.
+Python 3.14+ (uses the stdlib `compression.zstd` module).
 
 ```sh
 uv venv --python 3.14
@@ -27,48 +26,13 @@ uv pip install -e .
 puzzle-tb lichess_db_puzzle.csv.zst --out report.csv
 ```
 
-The input may be a plain `.csv` or a `.csv.zst` (streamed). Only the `PuzzleId`,
-`FEN`, `Moves`, and `Themes` columns are used; extra columns and column
-reordering are fine, and a missing required column is reported with a clear
-error. The run is
-**resumable**: any `PuzzleId` already present in `--out` is skipped, so an updated
-database only verifies the new puzzles. The output is flushed after every puzzle,
-so an interrupt (Ctrl-C) loses at most the in-flight puzzles — just re-run with
-the same `--out` to continue.
+The input may be a plain `.csv` or a `.csv.zst` (streamed).
 
-### Options
+Verification runs are **resumable**: any `PuzzleId` already present in `--out`
+is skipped. So interrupt with Ctrl-C or check new puzzles from an updated
+database at any time.
 
-| Option | Default | Meaning |
-|---|---|---|
-| `--endpoint URL` | `https://tablebase.lichess.ovh` | lila-tablebase base URL; requests go to `<endpoint>/standard` (point at a local instance if you have one) |
-| `--max-rps R` | `0.95` | max requests/second (`0` = unlimited) |
-| `--concurrency N` | `20` | max requests in flight |
-| `--timeout S` | `60` | per-request timeout (seconds) |
-| `--retries N` | `5` | retries per request on transient errors |
-| `--limit N` | — | only scan the first N rows |
-
-On HTTP 429 the client pauses a full minute, then retries. Server errors (5xx) and
-network/timeout errors are retried with backoff. A client error (4xx other than
-429 — e.g. 404 or 400) means the request itself is wrong, so it is **immediately
-fatal and reported**. If retries are exhausted, the run also **stops and reports**
-rather than risk mis-verifying a puzzle. Re-run with the same `--out` to resume.
-
-## Output
-
-As puzzles are rejected they are printed to **stdout**, one per line, as a
-clickable training link plus a PGN-style snippet for analysis (the rejection
-reason is a `{ … }` comment on the offending move); progress and the summary go
-to stderr, so the two can be redirected independently:
-
-```
-https://lichess.org/training/abc: [FEN "…"] 45... Re1+ 46. Nf3 { NOT_UNIQUE:loss@5 } 46... Nf6
-```
-
-The full per-puzzle record (including accepted puzzles) is written to the
-`--out` CSV of `PuzzleId,Reasons`. `Reasons` is a space-separated list of rejection
-codes; an **empty** list means the puzzle was not rejected by any known evidence.
-Each reason is `CODE:detail@i`, where `i` is the index of the offending move in
-the puzzle's `Moves` and `detail` is the exact tablebase category (or DTM).
+## Rejection reasons
 
 | Code | Meaning |
 |---|---|
