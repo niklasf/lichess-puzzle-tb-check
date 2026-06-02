@@ -17,7 +17,7 @@ import aiohttp
 
 from .schema import MalformedResponse, TablebaseResponse, parse_response
 
-DEFAULT_ENDPOINT = "https://tablebase.lichess.ovh/standard"
+DEFAULT_ENDPOINT = "https://tablebase.lichess.ovh"
 _USER_AGENT = "lichess-puzzles-tb/0.1.0"
 _RATE_LIMIT_PAUSE = 60.0  # seconds to wait after an HTTP 429
 
@@ -72,7 +72,8 @@ class TablebaseClient:
         max_retries: int = 5,
         backoff: float = 1.0,
     ) -> None:
-        self._endpoint = endpoint
+        # ``endpoint`` is the base URL; standard chess positions go to /standard.
+        self._url = endpoint.rstrip("/") + "/standard"
         self._timeout = aiohttp.ClientTimeout(total=timeout)
         self._max_retries = max_retries
         self._backoff = backoff
@@ -148,7 +149,7 @@ class TablebaseClient:
         assert self._session is not None
         async with self._semaphore:
             self._request_count += 1
-            async with self._session.get(self._endpoint, params={"fen": fen}) as resp:
+            async with self._session.get(self._url, params={"fen": fen}) as resp:
                 if resp.status == 429:
                     await self._handle_429()
                     raise _PausedRetry

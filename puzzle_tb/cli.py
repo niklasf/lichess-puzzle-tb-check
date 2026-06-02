@@ -19,7 +19,9 @@ def _build_config(argv: Sequence[str] | None) -> Config:
     parser.add_argument("input", help="puzzle CSV (.csv or .csv.zst)")
     parser.add_argument("--out", required=True, help="results CSV (created/appended; resumable)")
     parser.add_argument(
-        "--endpoint", default=DEFAULT_ENDPOINT, help=f"lila-tablebase /standard URL (default: {DEFAULT_ENDPOINT})"
+        "--endpoint",
+        default=DEFAULT_ENDPOINT,
+        help=f"lila-tablebase base URL; requests go to <endpoint>/standard (default: {DEFAULT_ENDPOINT})",
     )
     parser.add_argument(
         "--max-rps", type=float, default=1.5, help="max requests/second; 0 = unlimited (default: 1.5)"
