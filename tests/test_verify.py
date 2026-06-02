@@ -118,6 +118,11 @@ class CheckmateExceptionTest(unittest.TestCase):
         pos = position(1, "a1a8", [mv("a1a8", Category.LOSS), mv("a1b8", Category.LOSS)])
         self.assertEqual(reasons(pos), ["NOT_UNIQUE:loss@1"])
 
+    def test_mate_in_equality_puzzle_is_rejected(self) -> None:
+        # A mating move in an equality puzzle is unexpected -> rejected, not exempt.
+        pos = position(1, "a1a8", [mv("a1a8", Category.LOSS, checkmate=True)])
+        self.assertEqual(reasons(pos, equality=True), ["EQUALITY_HAS_WIN:loss@1"])
+
 
 class CaptureRuleTest(unittest.TestCase):
     def test_cursed_alternative_competes_before_capture(self) -> None:

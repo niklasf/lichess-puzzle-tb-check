@@ -107,8 +107,10 @@ the played one proves the puzzle defective).
 - played move known but not a clean draw → `EQUALITY_NOT_DRAW:<cat>`
 - a different move holds (`effective ∈ {WIN, DRAW}`) → `NOT_UNIQUE`/`WRONG_MOVE`
 
-**Immediate checkmate** (`move.checkmate`): always an acceptable solution regardless
-of other mating moves or longer wins — but it **still gets the DTM check** below.
+**Immediate checkmate** (`move.checkmate`): for a winning/mate puzzle it's always an
+acceptable solution regardless of other mating moves or longer wins — but it **still
+gets the DTM check** below. In an `equality` puzzle a mate is unexpected, so it is
+**not** exempt — it goes through the equality check and is rejected (`EQUALITY_HAS_WIN`).
 
 **mateInX:** `ExactMate` for mateIn1–4, `AtLeastMate` for **mateIn5 = "5 or more"**
 (a lower bound that propagates: ≥4 at the next move, etc.). DTM is in plies; at the

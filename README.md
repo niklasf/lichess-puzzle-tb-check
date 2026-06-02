@@ -7,9 +7,7 @@ looks at the positions that have tablebase coverage, probes the
 [lila-tablebase](https://github.com/lichess-org/lila-tablebase) HTTP API, and
 records — per puzzle — whether every puzzler move is the **unique winning move**
 (or the **unique drawing move** for `equality` puzzles), plus a DTM check for
-`mateInX` puzzles. An immediate checkmate is always accepted regardless of
-alternatives (but must still match the mate count), and `mateIn5` means "mate in
-5 or more", so its DTM check is a lower bound.
+`mateInX` puzzles.
 
 ## Requirements
 

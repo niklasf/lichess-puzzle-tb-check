@@ -102,13 +102,15 @@ def _verify_position(position: PuzzlerPosition, themes: PuzzleThemes) -> list[st
     if played is None:
         return [f"MALFORMED@{i}"]
 
-    if played.checkmate:
-        # An immediate checkmate is always an acceptable solution, regardless of
-        # other mating moves or longer winning alternatives -- but it must still
-        # match the expected mate count (the DTM check below still applies).
-        reasons = []
-    elif themes.equality:
+    if themes.equality:
+        # Equality puzzles go through the full check even for a mating move: a mate
+        # is a win, so it is rejected (EQUALITY_HAS_WIN), not accepted.
         reasons = _verify_equality(i, played, moves, position.capture_seen)
+    elif played.checkmate:
+        # For a winning/mate puzzle an immediate checkmate is always an acceptable
+        # solution, regardless of other mating moves or longer winning alternatives
+        # -- but it must still match the expected mate count (DTM check below).
+        reasons = []
     else:
         reasons = _verify_winning(i, played, moves, position.capture_seen)
 
