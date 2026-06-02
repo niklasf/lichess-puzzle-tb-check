@@ -1,19 +1,24 @@
 """Always-on progress reporting to stderr.
 
 Shows a progress bar over rows scanned, throughput in puzzles/s and tablebase
-requests/s (windowed over the render interval), and an ETA from the smoothed
-overall row rate. The bar is only drawn on a TTY; a one-line summary is always
-printed at the end.
+requests/s (averaged over a sliding window so the figures stay steady), and an
+ETA from the overall row rate. The bar is only drawn on a TTY; a one-line summary
+is always printed at the end.
 """
 
 from __future__ import annotations
 
 import sys
 import time
+from collections import deque
 from collections.abc import Callable
 from typing import TextIO
 
 _BAR_WIDTH = 30
+# Throughput and ETA are averaged over a sliding window of this many seconds, so
+# the figures stay steady and the ETA isn't skewed by the fast skip of already
+# verified rows right after a resume.
+_RATE_WINDOW = 15.0
 
 
 def _format_duration(seconds: float) -> str:
@@ -42,9 +47,8 @@ class Progress:
         self._enabled = self._stream.isatty()
         now = time.monotonic()
         self._start = now
-        self._last_t = now
-        self._last_puzzles = 0
-        self._last_requests = 0
+        # (timestamp, rows, puzzles, requests) samples kept within _RATE_WINDOW.
+        self._samples: deque[tuple[float, int, int, int]] = deque([(now, 0, 0, 0)])
 
     @property
     def puzzles(self) -> int:
@@ -61,24 +65,26 @@ class Progress:
         if not self._enabled:
             return
         now = time.monotonic()
-        dt = max(now - self._last_t, 1e-6)
         requests = self._get_requests()
-        puzzle_rate = (self.puzzles - self._last_puzzles) / dt
-        request_rate = (requests - self._last_requests) / dt
-        self._last_t, self._last_puzzles, self._last_requests = now, self.puzzles, requests
+        self._samples.append((now, self.rows, self.puzzles, requests))
+        while len(self._samples) > 1 and now - self._samples[0][0] > _RATE_WINDOW:
+            self._samples.popleft()
+        base_t, base_rows, base_puzzles, base_requests = self._samples[0]
+        span = max(now - base_t, 1e-6)
+        row_rate = (self.rows - base_rows) / span
+        puzzle_rate = (self.puzzles - base_puzzles) / span
+        request_rate = (requests - base_requests) / span
 
-        line = self._format_line(now, puzzle_rate, request_rate)
+        line = self._format_line(row_rate, puzzle_rate, request_rate)
         self._stream.write("\r\x1b[K" + line)
         self._stream.flush()
 
-    def _format_line(self, now: float, puzzle_rate: float, request_rate: float) -> str:
-        elapsed = now - self._start
+    def _format_line(self, row_rate: float, puzzle_rate: float, request_rate: float) -> str:
         if self.total:
             frac = min(1.0, self.rows / self.total)
             filled = int(frac * _BAR_WIDTH)
             bar = "#" * filled + "-" * (_BAR_WIDTH - filled)
-            overall = self.rows / elapsed if elapsed > 0 else 0.0
-            eta = (self.total - self.rows) / overall if overall > 0 else 0.0
+            eta = (self.total - self.rows) / row_rate if row_rate > 0 else 0.0
             head = f"[{bar}] {frac * 100:5.1f}% {self.rows}/{self.total}"
             tail = f" ETA {_format_duration(eta)}"
         else:
@@ -87,7 +93,7 @@ class Progress:
         return (
             f"{head} | {self.puzzles} verified "
             f"({self.valid} ok, {self.rejected} rej) | "
-            f"{puzzle_rate:.1f} puzzles/s | {request_rate:.1f} req/s{tail}"
+            f"{puzzle_rate:.1f} verified/s | {request_rate:.1f} req/s{tail}"
         )
 
     def finish(self) -> None:
