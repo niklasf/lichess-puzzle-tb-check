@@ -42,8 +42,11 @@ the same `--out` to continue.
 | `--retries N` | `5` | retries per request on transient errors |
 | `--limit N` | — | only scan the first N rows |
 
-On HTTP 429 the client pauses a full minute. If a request still fails after all
-retries, the run **stops and reports** rather than risk mis-verifying a puzzle.
+On HTTP 429 the client pauses a full minute, then retries. Server errors (5xx) and
+network/timeout errors are retried with backoff. A client error (4xx other than
+429 — e.g. 404 or 400) means the request itself is wrong, so it is **immediately
+fatal and reported**. If retries are exhausted, the run also **stops and reports**
+rather than risk mis-verifying a puzzle. Re-run with the same `--out` to resume.
 
 ## Output
 

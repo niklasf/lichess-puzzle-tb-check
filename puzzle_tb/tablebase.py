@@ -154,5 +154,12 @@ class TablebaseClient:
                     raise _PausedRetry
                 if resp.status >= 500:
                     raise _Retryable(f"HTTP {resp.status}")
+                if resp.status >= 400:
+                    # A client error (e.g. 404, 400) means the request itself is
+                    # wrong; retrying cannot help, so fail fast and report.
+                    body = " ".join((await resp.text()).split())[:200]
+                    raise FatalTablebaseError(
+                        f"tablebase rejected request (HTTP {resp.status}) for {fen!r}: {body}"
+                    )
                 resp.raise_for_status()
                 return await resp.json(content_type=None)
