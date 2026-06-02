@@ -19,6 +19,7 @@ from types import TracebackType
 from typing import IO
 
 import chess
+import chess.pgn
 
 from . import coverage
 from .progress import Progress
@@ -53,6 +54,8 @@ class Config:
 @dataclass(slots=True)
 class _Puzzle:
     puzzle_id: str
+    fen: str
+    moves: list[str]
     themes: PuzzleThemes
     # (move index, played uci, fen, capture seen earlier in the line)
     positions: list[tuple[int, str, str, bool]]
@@ -135,6 +138,43 @@ def expand_puzzle(
     return positions, errors
 
 
+def format_rejection(puzzle_id: str, fen: str, moves: list[str], reasons: list[str]) -> str:
+    """Render a rejected puzzle as a training link plus a PGN-style snippet.
+
+    Reasons are attached as ``{ ... }`` comments on the move they refer to (by the
+    ``@i`` index), e.g.::
+
+        https://lichess.org/training/abc: [FEN "..."] 45...Re1+ 46. Nf3 { NOT_UNIQUE:loss@5 } 46... Nf6
+    """
+    by_index: dict[int, list[str]] = {}
+    for reason in reasons:
+        by_index.setdefault(int(reason.rsplit("@", 1)[1]), []).append(reason)
+
+    game = chess.pgn.Game()
+    game.setup(chess.Board(fen))
+    node: chess.pgn.GameNode = game
+    attached: set[int] = set()
+    for index, uci in enumerate(moves):
+        try:
+            move = node.board().parse_uci(uci)
+        except ValueError:
+            break
+        node = node.add_main_variation(move)
+        if index in by_index:
+            node.comment = " ".join(by_index[index])
+            attached.add(index)
+
+    leftover = [r for index, rs in by_index.items() if index not in attached for r in rs]
+    if leftover:
+        node.comment = " ".join(filter(None, [node.comment, *leftover]))
+
+    exporter = chess.pgn.StringExporter(columns=None, headers=False, variations=False, comments=True)
+    movetext = game.accept(exporter).strip()
+    if movetext.endswith("*"):  # drop the trailing PGN result token
+        movetext = movetext[:-1].strip()
+    return f'https://lichess.org/training/{puzzle_id}: [FEN "{fen}"] {movetext}'
+
+
 class ResultWriter(AbstractContextManager["ResultWriter"]):
     """Appends ``PuzzleId,Reasons`` rows, flushing after each write."""
 
@@ -187,6 +227,7 @@ async def _process_puzzle(
         writer.write(puzzle.puzzle_id, reasons)
         if reasons:
             progress.rejected += 1
+            progress.log(format_rejection(puzzle.puzzle_id, puzzle.fen, puzzle.moves, reasons))
         else:
             progress.valid += 1
     finally:
@@ -262,6 +303,8 @@ def _prepare(row: dict[str, str], done: set[str]) -> _Puzzle | None:
         return None
     return _Puzzle(
         puzzle_id=puzzle_id,
+        fen=fen,
+        moves=moves,
         themes=PuzzleThemes.parse(row["Themes"]),
         positions=positions,
         reasons=errors,

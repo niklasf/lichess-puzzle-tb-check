@@ -50,6 +50,13 @@ class Progress:
     def puzzles(self) -> int:
         return self.valid + self.rejected
 
+    def log(self, line: str) -> None:
+        """Print a line to stdout, clearing the in-progress bar first if drawn."""
+        if self._enabled:
+            self._stream.write("\r\x1b[K")
+            self._stream.flush()
+        print(line, flush=True)
+
     def render(self) -> None:
         if not self._enabled:
             return

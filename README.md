@@ -55,7 +55,17 @@ rather than risk mis-verifying a puzzle. Re-run with the same `--out` to resume.
 
 ## Output
 
-A CSV of `PuzzleId,Reasons`. `Reasons` is a space-separated list of rejection
+As puzzles are rejected they are printed to **stdout**, one per line, as a
+clickable training link plus a PGN-style snippet for analysis (the rejection
+reason is a `{ … }` comment on the offending move); progress and the summary go
+to stderr, so the two can be redirected independently:
+
+```
+https://lichess.org/training/abc: [FEN "…"] 45... Re1+ 46. Nf3 { NOT_UNIQUE:loss@5 } 46... Nf6
+```
+
+The full per-puzzle record (including accepted puzzles) is written to the
+`--out` CSV of `PuzzleId,Reasons`. `Reasons` is a space-separated list of rejection
 codes; an **empty** list means the puzzle was not rejected by any known evidence.
 Each reason is `CODE:detail@i`, where `i` is the index of the offending move in
 the puzzle's `Moves` and `detail` is the exact tablebase category (or DTM).
