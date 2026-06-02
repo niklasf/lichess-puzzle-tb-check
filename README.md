@@ -1,6 +1,6 @@
 # lichess-puzzles-tb
 
-Verify Lichess puzzles against chess tablebase data.
+Verify Lichess puzzles against tablebase data.
 
 Reads a [Lichess puzzle database](https://database.lichess.org/#puzzles) CSV,
 looks at the positions that have tablebase coverage, probes the
@@ -36,10 +36,10 @@ database at any time.
 |---|---|
 | `NOT_WINNING:<cat>` | the played move is known not to win |
 | `WIN_NOT_CLEAN:<cat>` | the played move is only a cursed win (`blessed-loss`) |
-| `NOT_UNIQUE:<cat>` | a different move also wins (the strongest such category) |
-| `WRONG_MOVE:<cat>` | a different move wins/holds while the played move does not |
+| `NOT_UNIQUE:<cat>` | a different move also wins/holds |
+| `WRONG_MOVE:<cat>` | a different move wins/holds while the played is not known to |
 | `EQUALITY_HAS_WIN:<cat>` | an `equality` puzzle where a winning move exists |
-| `EQUALITY_NOT_DRAW:<cat>` | an `equality` puzzle whose played move does not cleanly draw |
+| `EQUALITY_NOT_DRAW:<cat>` | an `equality` puzzle whose played move does not draw |
 | `DTM_MISMATCH:<dtm>` | a `mateInX` puzzle whose DTM does not match the expected mate distance (exact for mateIn1–4; a lower bound for mateIn5 = "5 or more") |
 | `MALFORMED` | a recorded move is illegal / not offered by the tablebase |
 
