@@ -58,7 +58,7 @@ the puzzle's `Moves` and `detail` is the exact tablebase category (or DTM).
 | Code | Meaning |
 |---|---|
 | `NOT_WINNING:<cat>` | the played move is known not to win |
-| `WIN_NOT_CLEAN:<cat>` | the played move wins only ambiguously (`blessed-loss`/`maybe-loss`/`syzygy-loss`) |
+| `WIN_NOT_CLEAN:<cat>` | the played move is only a cursed win (`blessed-loss`) |
 | `NOT_UNIQUE:<cat>` | a different move also wins (the strongest such category) |
 | `WRONG_MOVE:<cat>` | a different move wins/holds while the played move does not |
 | `EQUALITY_HAS_WIN:<cat>` | an `equality` puzzle where a winning move exists |
@@ -74,13 +74,18 @@ covered territory (9→8-op1, or 8→7). The verifier checks every verifiable
 puzzler-to-move position and ignores the rest; a puzzle with no verifiable
 position is skipped.
 
-### Known vs. unknown, and ambiguity
+### Cleanness, the 50-move rule, and unknowns
 
-Rejection is **evidence-based**: only *positive known* tablebase facts reject a
-puzzle. An `unknown` move never rejects (nor confirms) — but incomplete
+`maybe-win`/`syzygy-win` (and their losing variants) are treated as **clean** —
+the WDL is known, only DTZ precision is fuzzy. The genuinely 50-move-distorted
+results are `cursed-win`/`blessed-loss`: a cursed win is never a *clean* win for
+the played move, and as an *alternative* it refutes uniqueness only **until the
+puzzler has seen a capture** — after a capture it collapses to a draw (the
+50-move rule) and no longer competes.
+
+Rejection is otherwise **evidence-based**: only *positive known* tablebase facts
+reject a puzzle. An `unknown` move never rejects (nor confirms) — but incomplete
 information can still suffice (two known winning moves prove non-uniqueness
-regardless of unknown moves). Ambiguous *known* categories (`cursed-win`,
-`maybe-win`, `syzygy-win`, and the loss-side equivalents) are resolved against the
-puzzle, and the precise category is always recorded so the policy can be revisited
-later without re-querying.
+regardless of unknown moves). The precise category is always recorded in each
+reason, so the policy can be revisited later without re-querying.
 ```

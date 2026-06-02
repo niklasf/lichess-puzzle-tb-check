@@ -10,12 +10,19 @@ def mv(uci: str, category: Category) -> Move:
 
 
 def position(
-    move_index: int, played: str, moves: Sequence[Move], *, dtm: int | None = None
+    move_index: int,
+    played: str,
+    moves: Sequence[Move],
+    *,
+    dtm: int | None = None,
+    capture_seen: bool = False,
 ) -> PuzzlerPosition:
     response = TablebaseResponse(
         category=Category.UNKNOWN, dtm=dtm, dtz=None, checkmate=False, stalemate=False, moves=tuple(moves)
     )
-    return PuzzlerPosition(move_index=move_index, played_uci=played, response=response)
+    return PuzzlerPosition(
+        move_index=move_index, played_uci=played, response=response, capture_seen=capture_seen
+    )
 
 
 def reasons(
@@ -47,7 +54,17 @@ class NormalPuzzleTest(unittest.TestCase):
         )
         self.assertEqual(reasons(pos), ["NOT_UNIQUE:loss@1"])
 
-    def test_played_win_not_clean(self) -> None:
+    def test_maybe_loss_is_clean_win(self) -> None:
+        # maybe-win/maybe-loss now count as clean: accepted when unique.
+        pos = position(1, "a1a8", [mv("a1a8", Category.MAYBE_LOSS), mv("a1a2", Category.DRAW)])
+        self.assertEqual(reasons(pos), [])
+
+    def test_syzygy_loss_is_clean_win(self) -> None:
+        pos = position(1, "a1a8", [mv("a1a8", Category.SYZYGY_LOSS), mv("a1a2", Category.DRAW)])
+        self.assertEqual(reasons(pos), [])
+
+    def test_cursed_win_played_not_clean(self) -> None:
+        # A cursed win (move category blessed-loss) is never clean for the played move.
         pos = position(1, "a1a8", [mv("a1a8", Category.BLESSED_LOSS), mv("a1a2", Category.DRAW)])
         self.assertEqual(reasons(pos), ["WIN_NOT_CLEAN:blessed-loss@1"])
 
@@ -67,6 +84,47 @@ class NormalPuzzleTest(unittest.TestCase):
             [mv("a1a8", Category.LOSS), mv("a1b8", Category.LOSS), mv("a1c8", Category.MAYBE_LOSS)],
         )
         self.assertEqual(reasons(pos), ["NOT_UNIQUE:loss@1"])
+
+
+class CaptureRuleTest(unittest.TestCase):
+    def test_cursed_alternative_competes_before_capture(self) -> None:
+        # Before a capture, a cursed-win alternative (blessed-loss) refutes uniqueness.
+        pos = position(
+            1, "a1a8", [mv("a1a8", Category.LOSS), mv("a1b8", Category.BLESSED_LOSS)], capture_seen=False
+        )
+        self.assertEqual(reasons(pos), ["NOT_UNIQUE:blessed-loss@1"])
+
+    def test_cursed_alternative_ignored_after_capture(self) -> None:
+        # After a capture, a cursed-win alternative no longer refutes -> unique, accepted.
+        pos = position(
+            1, "a1a8", [mv("a1a8", Category.LOSS), mv("a1b8", Category.BLESSED_LOSS)], capture_seen=True
+        )
+        self.assertEqual(reasons(pos), [])
+
+    def test_clean_alternative_competes_after_capture(self) -> None:
+        # A clean (maybe-loss) alternative still refutes after a capture.
+        pos = position(
+            1, "a1a8", [mv("a1a8", Category.LOSS), mv("a1b8", Category.MAYBE_LOSS)], capture_seen=True
+        )
+        self.assertEqual(reasons(pos), ["NOT_UNIQUE:maybe-loss@1"])
+
+    def test_played_cursed_win_unique_after_capture(self) -> None:
+        # Played cursed win is still flagged not-clean, but uniqueness holds post-capture.
+        pos = position(
+            1, "a1a8", [mv("a1a8", Category.BLESSED_LOSS), mv("a1b8", Category.DRAW)], capture_seen=True
+        )
+        self.assertEqual(reasons(pos), ["WIN_NOT_CLEAN:blessed-loss@1"])
+
+    def test_equality_cursed_loss_holds_only_after_capture(self) -> None:
+        # cursed-win (we cursed-lose) holds a draw only after a capture.
+        before = position(
+            1, "a1a2", [mv("a1a2", Category.DRAW), mv("a1b2", Category.CURSED_WIN)], capture_seen=False
+        )
+        self.assertEqual(reasons(before, equality=True), [])
+        after = position(
+            1, "a1a2", [mv("a1a2", Category.DRAW), mv("a1b2", Category.CURSED_WIN)], capture_seen=True
+        )
+        self.assertEqual(reasons(after, equality=True), ["NOT_UNIQUE:cursed-win@1"])
 
 
 class UnknownHandlingTest(unittest.TestCase):

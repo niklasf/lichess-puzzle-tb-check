@@ -45,7 +45,8 @@ class Config:
 class _Puzzle:
     puzzle_id: str
     themes: PuzzleThemes
-    positions: list[tuple[int, str, str]]  # (move index, played uci, fen)
+    # (move index, played uci, fen, capture seen earlier in the line)
+    positions: list[tuple[int, str, str, bool]]
     reasons: list[str] = field(default_factory=list)  # pre-filled malformed errors
 
 
@@ -87,24 +88,32 @@ def load_done(path: str) -> set[str]:
     return done
 
 
-def expand_puzzle(fen: str, moves: list[str]) -> tuple[list[tuple[int, str, str]], list[str]]:
+def expand_puzzle(
+    fen: str, moves: list[str]
+) -> tuple[list[tuple[int, str, str, bool]], list[str]]:
     """Return verifiable puzzler positions and any move-legality errors.
 
-    Each position is ``(move_index, played_uci, fen)`` for a puzzler-to-move
-    position that is :func:`coverage.verifiable`. The opponent's setup move
-    (index 0) and responses (even indices) are applied but not verified.
+    Each position is ``(move_index, played_uci, fen, capture_seen)`` for a
+    puzzler-to-move position that is :func:`coverage.verifiable`. ``capture_seen``
+    is whether any earlier move in the line (indices < move_index) was a capture.
+    The opponent's setup move (index 0) and responses (even indices) are applied
+    but not verified.
     """
     board = chess.Board(fen)
-    positions: list[tuple[int, str, str]] = []
+    positions: list[tuple[int, str, str, bool]] = []
     errors: list[str] = []
+    capture_seen = False
     for index, uci in enumerate(moves):
         if index >= 1 and index % 2 == 1 and coverage.verifiable(board):
-            positions.append((index, uci, board.fen()))
+            positions.append((index, uci, board.fen(), capture_seen))
         try:
-            board.push_uci(uci)
+            move = board.parse_uci(uci)
         except (ValueError, AssertionError):
             errors.append(f"MALFORMED@{index}")
             break
+        if board.is_capture(move):
+            capture_seen = True
+        board.push(move)
     return positions, errors
 
 
@@ -143,11 +152,18 @@ async def _process_puzzle(
         reasons = list(puzzle.reasons)
         if puzzle.positions:
             responses = await asyncio.gather(
-                *(client.probe(fen) for (_, _, fen) in puzzle.positions)
+                *(client.probe(fen) for (_, _, fen, _) in puzzle.positions)
             )
             puzzler_positions = [
-                PuzzlerPosition(move_index=index, played_uci=uci, response=response)
-                for (index, uci, _), response in zip(puzzle.positions, responses)
+                PuzzlerPosition(
+                    move_index=index,
+                    played_uci=uci,
+                    response=response,
+                    capture_seen=capture_seen,
+                )
+                for (index, uci, _, capture_seen), response in zip(
+                    puzzle.positions, responses
+                )
             ]
             reasons.extend(verify_puzzle(puzzler_positions, puzzle.themes))
         writer.write(puzzle.puzzle_id, reasons)

@@ -16,7 +16,14 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from .classify import is_clean_draw, is_clean_win, is_holding, is_known, is_winning
+from .classify import (
+    competes_for_win,
+    holds_draw,
+    is_clean_draw,
+    is_clean_win,
+    is_known,
+    is_winning,
+)
 from .schema import Move, TablebaseResponse
 
 _MATE_IN_RE = re.compile(r"^mateIn(\d+)$")
@@ -29,6 +36,7 @@ class PuzzlerPosition:
     move_index: int  # index of the played move within the puzzle's Moves list
     played_uci: str
     response: TablebaseResponse
+    capture_seen: bool  # whether a capture has occurred earlier in the puzzle line
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,50 +81,64 @@ def _verify_position(position: PuzzlerPosition, themes: PuzzleThemes) -> list[st
         return [f"MALFORMED@{i}"]
 
     if themes.equality:
-        reasons = _verify_equality(i, played, moves)
+        reasons = _verify_equality(i, played, moves, position.capture_seen)
     else:
-        reasons = _verify_winning(i, played, moves)
+        reasons = _verify_winning(i, played, moves, position.capture_seen)
 
     if themes.mate_in is not None:
         reasons.extend(_verify_mate(i, position.response, themes.mate_in))
     return reasons
 
 
-def _verify_winning(i: int, played: Move, moves: Sequence[Move]) -> list[str]:
+def _verify_winning(
+    i: int, played: Move, moves: Sequence[Move], capture_seen: bool
+) -> list[str]:
     """Normal puzzle: the played move must be the unique clean winning move."""
     reasons: list[str] = []
     pc = played.category
     if is_known(pc) and not is_winning(pc):
         reasons.append(f"NOT_WINNING:{pc.value}@{i}")
-    elif is_winning(pc) and not is_clean_win(pc):
+    elif is_winning(pc) and not is_clean_win(pc):  # a cursed win
         reasons.append(f"WIN_NOT_CLEAN:{pc.value}@{i}")
 
     spoiler = next(
-        (m for m in moves if m.uci != played.uci and is_winning(m.category)), None
+        (
+            m
+            for m in moves
+            if m.uci != played.uci and competes_for_win(m.category, capture_seen)
+        ),
+        None,
     )
     if spoiler is not None:
-        code = "NOT_UNIQUE" if is_winning(pc) else "WRONG_MOVE"
+        code = "NOT_UNIQUE" if is_clean_win(pc) else "WRONG_MOVE"
         reasons.append(f"{code}:{spoiler.category.value}@{i}")
     return reasons
 
 
-def _verify_equality(i: int, played: Move, moves: Sequence[Move]) -> list[str]:
+def _verify_equality(
+    i: int, played: Move, moves: Sequence[Move], capture_seen: bool
+) -> list[str]:
     """Equality puzzle: the played move must be the unique clean drawing move."""
     reasons: list[str] = []
     pc = played.category
 
-    winner = next((m for m in moves if is_winning(m.category)), None)
+    winner = next((m for m in moves if is_clean_win(m.category)), None)
     if winner is not None:
         reasons.append(f"EQUALITY_HAS_WIN:{winner.category.value}@{i}")
 
-    if is_known(pc) and not is_clean_draw(pc) and not is_winning(pc):
+    if is_known(pc) and not is_clean_draw(pc) and not is_clean_win(pc):
         reasons.append(f"EQUALITY_NOT_DRAW:{pc.value}@{i}")
 
     spoiler = next(
-        (m for m in moves if m.uci != played.uci and is_holding(m.category)), None
+        (
+            m
+            for m in moves
+            if m.uci != played.uci and holds_draw(m.category, capture_seen)
+        ),
+        None,
     )
     if spoiler is not None:
-        code = "NOT_UNIQUE" if is_holding(pc) else "WRONG_MOVE"
+        code = "NOT_UNIQUE" if holds_draw(pc, capture_seen) else "WRONG_MOVE"
         reasons.append(f"{code}:{spoiler.category.value}@{i}")
     return reasons
 
