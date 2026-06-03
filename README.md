@@ -24,7 +24,7 @@ uv pip install -e .
 puzzle-tb lichess_db_puzzle.csv.zst --out report.csv
 ```
 
-The input may be a plain `.csv` or a `.csv.zst` (streamed).
+The input may be a plain `.csv` or a `.csv.zst`.
 
 Verification runs are **resumable**: any `PuzzleId` already present in `--out`
 is skipped. So interrupt with Ctrl-C or check new puzzles from an updated
@@ -32,14 +32,19 @@ database at any time.
 
 ## Output
 
-The `--out` CSV has columns `PuzzleId,PGN,CliCommand`, both empty for valid
-puzzles. For a rejected puzzle, `PGN` is an analysis snippet
-(`[FEN "..."] 1. e4 { NOT_UNIQUE:draw@1 }`) and `CliCommand` is a ready-to-run
-`puzzle issue …` command tagged with this run's id. Rejections are also printed to
-stdout live as a clickable training link.
+The `--out` CSV has columns `PuzzleId,PGN,CliCommand`. The latter are both empty
+for valid puzzles.
 
-No field contains a comma, so columns extract with `cut`. For example, the CLI
-commands for all rejected puzzles (skip the header, drop empty rows):
+Example excerpt:
+
+```
+0ddFb,,
+0d6GM,,
+0bGDG,[FEN "6rk/7p/2p1r3/5P1R/5Q1K/3B4/2P3qP/q7 b - - 2 37"] 37... Qe5 38. Rxh7+ Kxh7 39. fxe6+ Rg6 40. Bxg6+ Qxg6 41. Qxe5 Qxc2 42. e7 { NOT_UNIQUE:loss@9 },puzzle issue 0bGDG puzzle-tb:208fca81:NOT_UNIQUE:loss@9
+0cVwQ,,
+```
+
+Extract `CliCommand` column:
 
 ```sh
 tail -n +2 report.csv | cut -d, -f3 | grep .
@@ -65,19 +70,28 @@ covered territory (9→8-op1, or 8→7). The verifier checks every verifiable
 puzzler-to-move position and ignores the rest; a puzzle with no verifiable
 position is skipped.
 
-## Unconditional vs frustrated wins, the 50-move rule, and unknowns
+## Unconditional vs. frustrated wins, the 50-move rule, and unknowns
 
 `maybe-win`/`syzygy-win` (and their losing variants) are treated as
-**unconditional** wins/losses — the WDL is known. `cursed-win`/`blessed-loss` are
-**frustrated** wins/losses (real, but the 50-move rule can turn them into draws): a
-frustrated win is never an unconditional win for the played move, and as an
-*alternative* it refutes uniqueness only **until the puzzler has seen a capture**.
-The 50-move counter isn't visible on the board, so before the first capture the
-puzzler can't know it; after a capture resets it, a frustrated result collapses to a
-draw and no longer competes.
+**unconditional** wins and losses, respectively.
+
+`cursed-win`/`blessed-loss` are **frustrated** wins/losses under the 50-move rule.
+We would reject a supposedly winning puzzle if the played move is a frustrated win.
+
+For ambiguity, generally a frustrated win would prevent an unconditional win
+from being considered unique. A puzzle with a winning move and a frustrated win
+would not be rejected.
+
+However, before the first capture, the puzzler can't
+know the 50-move counter, so we conservatively reject puzzles with
+frustrated alternative moves to avoid confusion.
 
 Rejection is otherwise **evidence-based**: only *positive known* tablebase facts
-reject a puzzle. An `unknown` move never rejects (nor confirms) — but incomplete
-information can still suffice (two known winning moves prove non-uniqueness
-regardless of unknown moves). The precise category is always recorded in each
-reason, so the policy can be revisited later without re-querying.
+reject a puzzle. An `unknown` move itself is not enough to reject a puzzle —
+but incomplete information can still suffice (two known winning moves prove non-uniqueness
+regardless of unknown moves). The precise category `<cat>` is always recorded in each
+rejection reason.
+
+## License
+
+GPL-3.0-or-later. See [LICENSE](LICENSE).
