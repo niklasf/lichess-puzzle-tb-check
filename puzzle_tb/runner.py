@@ -24,7 +24,7 @@ import chess.pgn
 from . import coverage
 from .progress import Progress
 from .tablebase import FatalTablebaseError, TablebaseClient
-from .verify import MalformedPuzzle, PuzzleThemes, PuzzlerPosition, verify_puzzle
+from .verify import MalformedPuzzle, PuzzleThemes, PuzzlerPosition, Rejection, verify_puzzle
 
 
 # The only input columns we depend on; any others (Rating, GameUrl, ...) are
@@ -132,17 +132,18 @@ def expand_puzzle(fen: str, moves: list[str]) -> list[tuple[int, str, str, bool]
     return positions
 
 
-def format_rejection(puzzle_id: str, fen: str, moves: list[str], reasons: list[str]) -> str:
+def format_rejection(
+    puzzle_id: str, fen: str, moves: list[str], rejections: list[Rejection]
+) -> str:
     """Render a rejected puzzle as a training link plus a PGN-style snippet.
 
-    Reasons are attached as ``{ ... }`` comments on the move they refer to (by the
-    ``@i`` index), e.g.::
+    Rejections are attached as ``{ ... }`` comments on the move they refer to, e.g.::
 
         https://lichess.org/training/abc: [FEN "..."] 45...Re1+ 46. Nf3 { NOT_UNIQUE:loss@5 } 46... Nf6
     """
-    by_index: dict[int, list[str]] = {}
-    for reason in reasons:
-        by_index.setdefault(int(reason.rsplit("@", 1)[1]), []).append(reason)
+    by_index: dict[int, list[Rejection]] = {}
+    for rejection in rejections:
+        by_index.setdefault(rejection.move_index, []).append(rejection)
 
     game = chess.pgn.Game()
     game.setup(chess.Board(fen))
@@ -155,12 +156,12 @@ def format_rejection(puzzle_id: str, fen: str, moves: list[str], reasons: list[s
             break
         node = node.add_main_variation(move)
         if index in by_index:
-            node.comment = " ".join(by_index[index])
+            node.comment = " ".join(str(r) for r in by_index[index])
             attached.add(index)
 
     leftover = [r for index, rs in by_index.items() if index not in attached for r in rs]
     if leftover:
-        node.comment = " ".join(filter(None, [node.comment, *leftover]))
+        node.comment = " ".join(filter(None, [node.comment, *(str(r) for r in leftover)]))
 
     exporter = chess.pgn.StringExporter(columns=None, headers=False, variations=False, comments=True)
     movetext = game.accept(exporter).strip()
@@ -180,8 +181,8 @@ class ResultWriter(AbstractContextManager["ResultWriter"]):
             self._writer.writerow(["PuzzleId", "Reasons"])
             self._handle.flush()
 
-    def write(self, puzzle_id: str, reasons: list[str]) -> None:
-        self._writer.writerow([puzzle_id, " ".join(reasons)])
+    def write(self, puzzle_id: str, rejections: list[Rejection]) -> None:
+        self._writer.writerow([puzzle_id, " ".join(str(r) for r in rejections)])
         self._handle.flush()
 
     def __exit__(

@@ -3,7 +3,8 @@ import unittest
 from pathlib import Path
 
 from puzzle_tb.runner import InputError, expand_puzzle, format_rejection, read_rows
-from puzzle_tb.verify import MalformedPuzzle
+from puzzle_tb.schema import Category
+from puzzle_tb.verify import MalformedPuzzle, ReasonCode, Rejection
 
 
 def _write(text: str) -> str:
@@ -54,7 +55,7 @@ class FormatRejectionTest(unittest.TestCase):
             "xyz",
             "8/8/4k3/8/8/4K3/8/4Q3 b - - 0 1",
             ["e6d6", "e3e4"],
-            ["NOT_UNIQUE:loss@1"],
+            [Rejection(ReasonCode.NOT_UNIQUE, Category.LOSS, 1)],
         )
         self.assertEqual(
             line,
@@ -67,7 +68,7 @@ class FormatRejectionTest(unittest.TestCase):
             "p",
             "8/8/8/8/4k3/8/8/R3K3 b - - 0 1",
             ["e4e5", "e1e2", "e5e6", "e2e3"],
-            ["NOT_WINNING:draw@3"],
+            [Rejection(ReasonCode.NOT_WINNING, Category.DRAW, 3)],
         )
         self.assertTrue(line.endswith("3. Ke3 { NOT_WINNING:draw@3 }"), line)
 

@@ -9,6 +9,8 @@ from puzzle_tb.verify import (
     MateRequirement,
     PuzzleThemes,
     PuzzlerPosition,
+    ReasonCode,
+    Rejection,
     verify_puzzle,
 )
 
@@ -38,7 +40,7 @@ def position(
 def reasons(
     pos: PuzzlerPosition, *, equality: bool = False, mate: MateRequirement | None = None
 ) -> list[str]:
-    return verify_puzzle([pos], PuzzleThemes(equality=equality, mate=mate))
+    return [str(r) for r in verify_puzzle([pos], PuzzleThemes(equality=equality, mate=mate))]
 
 
 class ThemesParseTest(unittest.TestCase):
@@ -67,6 +69,11 @@ class NormalPuzzleTest(unittest.TestCase):
             1, "a1a8", [mv("a1a8", Category.LOSS), mv("a1b8", Category.LOSS), mv("a1a2", Category.DRAW)]
         )
         self.assertEqual(reasons(pos), ["NOT_UNIQUE:loss@1"])
+
+    def test_returns_typed_rejection(self) -> None:
+        pos = position(1, "a1a8", [mv("a1a8", Category.LOSS), mv("a1b8", Category.LOSS)])
+        (rejection,) = verify_puzzle([pos], PuzzleThemes(equality=False, mate=None))
+        self.assertEqual(rejection, Rejection(ReasonCode.NOT_UNIQUE, Category.LOSS, 1))
 
     def test_maybe_loss_is_clean_win(self) -> None:
         # maybe-win/maybe-loss now count as clean: accepted when unique.

@@ -30,7 +30,8 @@ uv run puzzle-tb INPUT.csv[.zst] --out report.csv [--endpoint URL] [--max-rps R]
 - `classify.py` — precise-category predicates + `effective(category, capture_seen)`.
 - `coverage.py` — `is_op1`/`more_than_lone_pawn`/`directly_covered`/`verifiable`,
   `cheap_gate`, `piece_count`.
-- `verify.py` — pure verdict logic → reason codes; `PuzzleThemes`, `ExactMate`/`AtLeastMate`.
+- `verify.py` — pure verdict logic → `list[Rejection]` (typed `ReasonCode` + `detail` +
+  `move_index`); `PuzzleThemes`, `ExactMate`/`AtLeastMate`, `MalformedPuzzle`.
 - `tablebase.py` — async client (rate limit, concurrency, 429 pause, retries).
 - `runner.py` — CSV streaming, resume, scheduling, result writing, `format_rejection`.
 - `progress.py` — stderr progress renderer.
@@ -119,9 +120,10 @@ Exact: `dtm == expected`; lower bound: `dtm >= expected`; else `DTM_MISMATCH:<dt
 DTM is only available ≤5 pieces, so it's skipped when absent.
 
 An illegal move, or a played move the tablebase doesn't offer, is **fatal**
-(`MalformedPuzzle`) — not a per-puzzle rejection. Every reason is `CODE:detail@i`
-where `i` is the move index in `Moves` and `detail` is the exact category/DTM (the
-strongest relevant move, first in best-first order).
+(`MalformedPuzzle`) — not a per-puzzle rejection. Each rejection is a typed
+`Rejection(code: ReasonCode, detail: Category | int, move_index)`; `str()` renders
+`CODE:detail@i`, where `detail` is the exact category/DTM of the strongest relevant
+move (first in best-first order) and `i` is the move index in `Moves`.
 
 ## Output & run behaviour
 
