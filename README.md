@@ -45,6 +45,12 @@ Extract `CliCommand` column:
 tail -n +2 report.csv | cut -d, -f3 | grep .
 ```
 
+Sample some random rejected puzzles as PGN for analysis on Lichess:
+
+```sh
+tail -n +2 report.csv | awk -F, '$2 != ""' | shuf -n 64 | awk -F, '{print "[Site \"https://lichess.org/training/" $1 "\"]" $2 " *\n"}'
+```
+
 ## Rejection reasons
 
 | Code | Meaning |
