@@ -9,9 +9,6 @@ from __future__ import annotations
 
 import chess
 
-# 64-bit mask; pawn paths shifted off the top of the board must not alias.
-_MASK64 = (1 << 64) - 1
-
 
 def piece_count(board: chess.Board) -> int:
     """Number of pieces on the board."""
@@ -31,7 +28,7 @@ def is_op1(board: chess.Board) -> bool:
         | (white_pawns << 24)
         | (white_pawns << 32)
         | (white_pawns << 40)
-    ) & _MASK64
+    )
     black_pawns = board.pawns & board.occupied_co[chess.BLACK]
     return bool(paths & black_pawns)
 
