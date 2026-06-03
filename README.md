@@ -15,8 +15,16 @@ Python 3.14+ (uses the stdlib `compression.zstd` module), `uv`.
 
 ## Usage
 
+Against public API (slow):
+
 ```sh
 uv run puzzle-tb-check lichess_db_puzzle.csv.zst --out report.csv
+```
+
+Against a local instance:
+
+```sh
+uv run puzzle-tb-check lichess_db_puzzle.csv.zst --out report.csv --endpoint http://127.0.0.1:9000 --max-rps 0 --concurrency 120
 ```
 
 The input may be a plain `.csv` or a `.csv.zst`.
@@ -45,7 +53,7 @@ Extract `CliCommand` column:
 tail -n +2 report.csv | cut -d, -f3 | grep .
 ```
 
-Sample some random rejected puzzles as PGN for analysis on Lichess:
+Sample some random rejected puzzles as PGN for studying on Lichess:
 
 ```sh
 tail -n +2 report.csv | awk -F, '$2 != ""' | shuf -n 64 | awk -F, '{print "[Site \"https://lichess.org/training/" $1 "\"]" $2 " *\n"}'
