@@ -80,32 +80,33 @@ uv run puzzle-tb INPUT.csv[.zst] --out report.csv [--endpoint URL] [--max-rps R]
 A move's `Category` is from the **opponent's** perspective (the resulting position),
 so `loss` = opponent lost = *we* win.
 
-**Cleanness / 50-move rule:**
+**Unconditional vs frustrated / 50-move rule:**
 - `maybe-win`/`syzygy-win` and their losing variants `maybe-loss`/`syzygy-loss` are
-  **clean**.
-- `cursed-win`/`blessed-loss` are the 50-move-rule-distorted results.
-- `is_clean_win` = `{loss, maybe-loss, syzygy-loss}` (a cursed win, `blessed-loss`, is
-  never clean for the played move).
-- `effective(category, capture_seen)` → WIN/DRAW/LOSS/UNKNOWN: cursed results
-  (`cursed-win`/`blessed-loss`) keep their win/loss value **until a capture has been
-  seen** in the line, then collapse to a draw (the puzzler does not know about
-  the 50-move counter before the first capture).
-  `capture_seen` = some earlier move (index < this one) was a capture.
+  **unconditional** wins/losses.
+- `cursed-win`/`blessed-loss` are **frustrated** wins/losses (real wins/losses the
+  50-move rule can turn into draws).
+- `is_unconditional_win` = `{loss, maybe-loss, syzygy-loss}` (a frustrated win,
+  `blessed-loss`, is never unconditional for the played move).
+- `effective(category, capture_seen)` → WIN/DRAW/LOSS/UNKNOWN: the 50-move counter
+  isn't visible on the board, so **before the puzzler has seen a capture** a
+  frustrated result can't be assumed frustrated and keeps its raw win/loss value;
+  once a capture has reset the counter it collapses to a draw. `capture_seen` = some
+  earlier move (index < this one) was a capture.
 
 **Evidence-based rejection:** reject only on *positive known* facts. `unknown` never
 rejects or confirms — but incomplete info can still suffice (two known winning moves
 prove non-uniqueness regardless of unknown moves; a known winning move different from
 the played one proves the puzzle defective).
 
-**Normal puzzle** — played move must be the unique clean winning move:
+**Normal puzzle** — played move must be the unique unconditional winning move:
 - played not winning (known) → `NOT_WINNING:<cat>`
-- played a cursed win (`blessed-loss`) → `WIN_NOT_CLEAN:<cat>`
+- played a frustrated win (`blessed-loss`) → `WIN_FRUSTRATED:<cat>`
 - a different move competes (`effective == WIN`) → `NOT_UNIQUE:<cat>` if the played
-  move is itself a clean win, else `WRONG_MOVE:<cat>`
+  move is itself an unconditional win, else `WRONG_MOVE:<cat>`
 
-**`equality` puzzle** — played move must be the unique clean draw:
-- any move is a clean win → `EQUALITY_HAS_WIN:<cat>`
-- played move known but not a clean draw → `EQUALITY_NOT_DRAW:<cat>`
+**`equality` puzzle** — played move must be the unique unconditional draw:
+- any move is an unconditional win → `EQUALITY_HAS_WIN:<cat>`
+- played move known but not an unconditional draw → `EQUALITY_NOT_DRAW:<cat>`
 - a different move holds (`effective ∈ {WIN, DRAW}`) → `NOT_UNIQUE`/`WRONG_MOVE`
 
 **Immediate checkmate** (`move.checkmate`): for a winning/mate puzzle it's always an

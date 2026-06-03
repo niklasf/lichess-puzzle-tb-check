@@ -60,7 +60,7 @@ class ThemesParseTest(unittest.TestCase):
 
 
 class NormalPuzzleTest(unittest.TestCase):
-    def test_clean_unique_win_accepted(self) -> None:
+    def test_unconditional_unique_win_accepted(self) -> None:
         pos = position(1, "a1a8", [mv("a1a8", Category.LOSS), mv("a1a2", Category.DRAW)])
         self.assertEqual(reasons(pos), [])
 
@@ -75,19 +75,19 @@ class NormalPuzzleTest(unittest.TestCase):
         (rejection,) = verify_puzzle([pos], PuzzleThemes(equality=False, mate=None))
         self.assertEqual(rejection, Rejection(ReasonCode.NOT_UNIQUE, Category.LOSS, 1))
 
-    def test_maybe_loss_is_clean_win(self) -> None:
-        # maybe-win/maybe-loss now count as clean: accepted when unique.
+    def test_maybe_loss_is_unconditional_win(self) -> None:
+        # maybe-win/maybe-loss count as unconditional: accepted when unique.
         pos = position(1, "a1a8", [mv("a1a8", Category.MAYBE_LOSS), mv("a1a2", Category.DRAW)])
         self.assertEqual(reasons(pos), [])
 
-    def test_syzygy_loss_is_clean_win(self) -> None:
+    def test_syzygy_loss_is_unconditional_win(self) -> None:
         pos = position(1, "a1a8", [mv("a1a8", Category.SYZYGY_LOSS), mv("a1a2", Category.DRAW)])
         self.assertEqual(reasons(pos), [])
 
-    def test_cursed_win_played_not_clean(self) -> None:
-        # A cursed win (move category blessed-loss) is never clean for the played move.
+    def test_frustrated_win_played_rejected(self) -> None:
+        # A cursed win (move category blessed-loss) is never an unconditional win for the played move.
         pos = position(1, "a1a8", [mv("a1a8", Category.BLESSED_LOSS), mv("a1a2", Category.DRAW)])
-        self.assertEqual(reasons(pos), ["WIN_NOT_CLEAN:blessed-loss@1"])
+        self.assertEqual(reasons(pos), ["WIN_FRUSTRATED:blessed-loss@1"])
 
     def test_wrong_move_when_played_draws(self) -> None:
         pos = position(1, "a1a2", [mv("a1a8", Category.LOSS), mv("a1a2", Category.DRAW)])
@@ -98,7 +98,7 @@ class NormalPuzzleTest(unittest.TestCase):
         self.assertEqual(reasons(pos), ["NOT_WINNING:cursed-win@1"])
 
     def test_strongest_spoiler_reported(self) -> None:
-        # Moves are best-first: the clean loss is the strongest winning alternative.
+        # Moves are best-first: the unconditional loss is the strongest winning alternative.
         pos = position(
             1,
             "a1a8",
@@ -147,19 +147,19 @@ class CaptureRuleTest(unittest.TestCase):
         )
         self.assertEqual(reasons(pos), [])
 
-    def test_clean_alternative_competes_after_capture(self) -> None:
-        # A clean (maybe-loss) alternative still refutes after a capture.
+    def test_unconditional_alternative_competes_after_capture(self) -> None:
+        # An unconditional (maybe-loss) alternative still refutes after a capture.
         pos = position(
             1, "a1a8", [mv("a1a8", Category.LOSS), mv("a1b8", Category.MAYBE_LOSS)], capture_seen=True
         )
         self.assertEqual(reasons(pos), ["NOT_UNIQUE:maybe-loss@1"])
 
     def test_played_cursed_win_unique_after_capture(self) -> None:
-        # Played cursed win is still flagged not-clean, but uniqueness holds post-capture.
+        # Played cursed win is still flagged frustrated, but uniqueness holds post-capture.
         pos = position(
             1, "a1a8", [mv("a1a8", Category.BLESSED_LOSS), mv("a1b8", Category.DRAW)], capture_seen=True
         )
-        self.assertEqual(reasons(pos), ["WIN_NOT_CLEAN:blessed-loss@1"])
+        self.assertEqual(reasons(pos), ["WIN_FRUSTRATED:blessed-loss@1"])
 
     def test_equality_cursed_loss_holds_only_after_capture(self) -> None:
         # cursed-win (we cursed-lose) holds a draw only after a capture.
@@ -193,7 +193,7 @@ class UnknownHandlingTest(unittest.TestCase):
 
 
 class EqualityPuzzleTest(unittest.TestCase):
-    def test_clean_unique_draw_accepted(self) -> None:
+    def test_unconditional_unique_draw_accepted(self) -> None:
         pos = position(1, "a1a2", [mv("a1a2", Category.DRAW), mv("a1a8", Category.WIN)])
         self.assertEqual(reasons(pos, equality=True), [])
 

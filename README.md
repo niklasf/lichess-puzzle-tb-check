@@ -35,7 +35,7 @@ database at any time.
 | Code | Meaning |
 |---|---|
 | `NOT_WINNING:<cat>` | the played move is known not to win |
-| `WIN_NOT_CLEAN:<cat>` | the played move is only a cursed win (`blessed-loss`) |
+| `WIN_FRUSTRATED:<cat>` | the played move is only a frustrated win (`blessed-loss`) |
 | `NOT_UNIQUE:<cat>` | a different move also wins/holds |
 | `WRONG_MOVE:<cat>` | a different move wins/holds while the played is not known to |
 | `EQUALITY_HAS_WIN:<cat>` | an `equality` puzzle where a winning move exists |
@@ -50,14 +50,16 @@ covered territory (9→8-op1, or 8→7). The verifier checks every verifiable
 puzzler-to-move position and ignores the rest; a puzzle with no verifiable
 position is skipped.
 
-## Cleanness, the 50-move rule, and unknowns
+## Unconditional vs frustrated wins, the 50-move rule, and unknowns
 
-`maybe-win`/`syzygy-win` (and their losing variants) are treated as **clean** —
-the WDL is known, only DTZ precision is fuzzy. The genuinely 50-move-distorted
-results are `cursed-win`/`blessed-loss`: a cursed win is never a *clean* win for
-the played move, and as an *alternative* it refutes uniqueness only **until the
-puzzler has seen a capture** — after a capture it collapses to a draw (the
-50-move rule) and no longer competes.
+`maybe-win`/`syzygy-win` (and their losing variants) are treated as
+**unconditional** wins/losses — the WDL is known. `cursed-win`/`blessed-loss` are
+**frustrated** wins/losses (real, but the 50-move rule can turn them into draws): a
+frustrated win is never an unconditional win for the played move, and as an
+*alternative* it refutes uniqueness only **until the puzzler has seen a capture**.
+The 50-move counter isn't visible on the board, so before the first capture the
+puzzler can't know it; after a capture resets it, a frustrated result collapses to a
+draw and no longer competes.
 
 Rejection is otherwise **evidence-based**: only *positive known* tablebase facts
 reject a puzzle. An `unknown` move never rejects (nor confirms) — but incomplete

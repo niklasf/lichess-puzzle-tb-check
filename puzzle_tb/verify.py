@@ -16,9 +16,9 @@ from dataclasses import dataclass
 from .classify import (
     competes_for_win,
     holds_draw,
-    is_clean_draw,
-    is_clean_win,
     is_known,
+    is_unconditional_draw,
+    is_unconditional_win,
     is_winning,
 )
 from .schema import Category, Move, TablebaseResponse
@@ -35,7 +35,7 @@ class ReasonCode(enum.Enum):
     """Why a puzzle position was rejected."""
 
     NOT_WINNING = "NOT_WINNING"
-    WIN_NOT_CLEAN = "WIN_NOT_CLEAN"
+    WIN_FRUSTRATED = "WIN_FRUSTRATED"
     NOT_UNIQUE = "NOT_UNIQUE"
     WRONG_MOVE = "WRONG_MOVE"
     EQUALITY_HAS_WIN = "EQUALITY_HAS_WIN"
@@ -156,13 +156,13 @@ def _verify_position(position: PuzzlerPosition, themes: PuzzleThemes) -> list[Re
 def _verify_winning(
     i: int, played: Move, moves: Sequence[Move], capture_seen: bool
 ) -> list[Rejection]:
-    """Normal puzzle: the played move must be the unique clean winning move."""
+    """Normal puzzle: the played move must be the unique unconditional winning move."""
     rejections: list[Rejection] = []
     pc = played.category
     if is_known(pc) and not is_winning(pc):
         rejections.append(Rejection(ReasonCode.NOT_WINNING, pc, i))
-    elif is_winning(pc) and not is_clean_win(pc):  # a cursed win
-        rejections.append(Rejection(ReasonCode.WIN_NOT_CLEAN, pc, i))
+    elif is_winning(pc) and not is_unconditional_win(pc):  # a frustrated win
+        rejections.append(Rejection(ReasonCode.WIN_FRUSTRATED, pc, i))
 
     spoiler = next(
         (
@@ -173,7 +173,7 @@ def _verify_winning(
         None,
     )
     if spoiler is not None:
-        code = ReasonCode.NOT_UNIQUE if is_clean_win(pc) else ReasonCode.WRONG_MOVE
+        code = ReasonCode.NOT_UNIQUE if is_unconditional_win(pc) else ReasonCode.WRONG_MOVE
         rejections.append(Rejection(code, spoiler.category, i))
     return rejections
 
@@ -181,15 +181,15 @@ def _verify_winning(
 def _verify_equality(
     i: int, played: Move, moves: Sequence[Move], capture_seen: bool
 ) -> list[Rejection]:
-    """Equality puzzle: the played move must be the unique clean drawing move."""
+    """Equality puzzle: the played move must be the unique unconditional drawing move."""
     rejections: list[Rejection] = []
     pc = played.category
 
-    winner = next((m for m in moves if is_clean_win(m.category)), None)
+    winner = next((m for m in moves if is_unconditional_win(m.category)), None)
     if winner is not None:
         rejections.append(Rejection(ReasonCode.EQUALITY_HAS_WIN, winner.category, i))
 
-    if is_known(pc) and not is_clean_draw(pc) and not is_clean_win(pc):
+    if is_known(pc) and not is_unconditional_draw(pc) and not is_unconditional_win(pc):
         rejections.append(Rejection(ReasonCode.EQUALITY_NOT_DRAW, pc, i))
 
     spoiler = next(
