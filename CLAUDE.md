@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Detailed requirements and conventions for `puzzle-tb`.
+Detailed requirements and conventions for `puzzle-tb-check`.
 
 ## Commands
 
@@ -8,7 +8,7 @@ Detailed requirements and conventions for `puzzle-tb`.
 uv sync                                  # install (deps + dev group: mypy)
 uv run mypy                              # type check (strict)
 uv run python -m unittest discover -s tests   # tests
-uv run puzzle-tb INPUT.csv[.zst] --out report.csv [--endpoint URL] [--max-rps R] [--concurrency N] [--timeout S] [--retries N] [--limit N]
+uv run puzzle-tb-check INPUT.csv[.zst] --out report.csv [--endpoint URL] [--max-rps R] [--concurrency N] [--timeout S] [--retries N] [--limit N]
 ```
 
 ## Conventions
@@ -33,7 +33,7 @@ uv run puzzle-tb INPUT.csv[.zst] --out report.csv [--endpoint URL] [--max-rps R]
 - `verify.py` — pure verdict logic → `list[Rejection]` (typed `ReasonCode` + `detail` +
   `move_index`); `PuzzleThemes`, `ExactMate`/`AtLeastMate`, `MalformedPuzzle`.
 - `tablebase.py` — async client (rate limit, concurrency, 429 pause, retries).
-- `runner.py` — CSV streaming, resume, scheduling, result writing, `format_rejection`.
+- `runner.py` — CSV streaming, resume, scheduling, result writing, `pgn_snippet`.
 - `progress.py` — stderr progress renderer.
 - `cli.py` — argparse entry point.
 
@@ -130,7 +130,7 @@ move (first in best-first order) and `i` is the move index in `Moves`.
 
 - `--out` CSV: `PuzzleId,PGN,CliCommand` (`PGN`/`CliCommand` empty for valid puzzles).
   `PGN` is `pgn_snippet` = `[FEN "..."] <movetext>` with each rejection as a `{ … }`
-  comment. `CliCommand` = `puzzle issue {id} puzzle-tb:{uid}:{first_reason}`, where
+  comment. `CliCommand` = `puzzle issue {id} puzzle-tb-check:{uid}:{first_reason}`, where
   `uid = secrets.token_hex(4)` identifies the run. Written by plain comma-join (no
   `csv` quoting): fields never contain commas/newlines, so it stays `cut`-friendly
   (`cut -d, -f3` → CliCommand). No fingerprints/timestamps. Flushed after every puzzle.

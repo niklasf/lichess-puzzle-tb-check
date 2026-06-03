@@ -1,6 +1,6 @@
 """Precise-category predicates from the puzzler's perspective.
 
-A move's :class:`~puzzle_tb.schema.Category` describes the resulting position from
+A move's :class:`~puzzle_tb_check.schema.Category` describes the resulting position from
 the *opponent's* perspective, so ``loss`` means the opponent is lost, i.e. *we*
 win. We keep the precise category in rejection reasons and never collapse the
 distinct ambiguous categories into a single notion.

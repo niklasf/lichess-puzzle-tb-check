@@ -1,4 +1,4 @@
-"""Command-line entry point for ``puzzle-tb``."""
+"""Command-line entry point for ``puzzle-tb-check``."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from .verify import MalformedPuzzle
 
 def _build_config(argv: Sequence[str] | None) -> Config:
     parser = argparse.ArgumentParser(
-        prog="puzzle-tb",
+        prog="puzzle-tb-check",
         description="Verify Lichess puzzles against chess tablebase data.",
     )
     parser.add_argument("input", help="puzzle CSV (.csv or .csv.zst)")

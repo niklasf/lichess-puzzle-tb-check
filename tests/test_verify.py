@@ -1,8 +1,8 @@
 import unittest
 from collections.abc import Sequence
 
-from puzzle_tb.schema import Category, Move, TablebaseResponse
-from puzzle_tb.verify import (
+from puzzle_tb_check.schema import Category, Move, TablebaseResponse
+from puzzle_tb_check.verify import (
     AtLeastMate,
     ExactMate,
     MalformedPuzzle,

@@ -2,7 +2,7 @@ import unittest
 
 import chess
 
-from puzzle_tb import coverage
+from puzzle_tb_check import coverage
 
 
 class DirectlyCoveredTest(unittest.TestCase):

@@ -1,6 +1,6 @@
 import unittest
 
-from puzzle_tb.schema import Category, MalformedResponse, parse_response
+from puzzle_tb_check.schema import Category, MalformedResponse, parse_response
 
 
 def _valid_payload() -> dict[str, object]:

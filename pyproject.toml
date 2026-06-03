@@ -1,5 +1,5 @@
 [project]
-name = "puzzle-tb"
+name = "puzzle-tb-check"
 version = "0.1.0"
 description = "Verify Lichess puzzles against tablebase data"
 license = "GPL-3.0-or-later"
@@ -11,18 +11,18 @@ dependencies = [
 ]
 
 [project.scripts]
-puzzle-tb = "puzzle_tb.cli:main"
+puzzle-tb-check = "puzzle_tb_check.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["puzzle_tb"]
+packages = ["puzzle_tb_check"]
 
 [dependency-groups]
 dev = ["mypy>=1.11"]
 
 [tool.mypy]
 strict = true
-files = ["puzzle_tb", "tests"]
+files = ["puzzle_tb_check", "tests"]

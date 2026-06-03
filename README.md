@@ -1,4 +1,4 @@
-# lichess-puzzle-tb
+# Lichess puzzle-tb-check
 
 Verify Lichess puzzles against tablebase data.
 
@@ -11,17 +11,12 @@ records — per puzzle — whether every puzzler move is the **unique winning mo
 
 ## Requirements
 
-Python 3.14+ (uses the stdlib `compression.zstd` module).
-
-```sh
-uv venv --python 3.14
-uv pip install -e .
-```
+Python 3.14+ (uses the stdlib `compression.zstd` module), `uv`.
 
 ## Usage
 
 ```sh
-puzzle-tb lichess_db_puzzle.csv.zst --out report.csv
+uv run puzzle-tb-check lichess_db_puzzle.csv.zst --out report.csv
 ```
 
 The input may be a plain `.csv` or a `.csv.zst`.
@@ -40,7 +35,7 @@ Example excerpt:
 ```
 0ddFb,,
 0d6GM,,
-0bGDG,[FEN "6rk/7p/2p1r3/5P1R/5Q1K/3B4/2P3qP/q7 b - - 2 37"] 37... Qe5 38. Rxh7+ Kxh7 39. fxe6+ Rg6 40. Bxg6+ Qxg6 41. Qxe5 Qxc2 42. e7 { NOT_UNIQUE:loss@9 },puzzle issue 0bGDG puzzle-tb:208fca81:NOT_UNIQUE:loss@9
+0bGDG,[FEN "6rk/7p/2p1r3/5P1R/5Q1K/3B4/2P3qP/q7 b - - 2 37"] 37... Qe5 38. Rxh7+ Kxh7 39. fxe6+ Rg6 40. Bxg6+ Qxg6 41. Qxe5 Qxc2 42. e7 { NOT_UNIQUE:loss@9 },puzzle issue 0bGDG puzzle-tb-check:208fca81:NOT_UNIQUE:loss@9
 0cVwQ,,
 ```
 

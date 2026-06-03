@@ -2,15 +2,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from puzzle_tb.runner import (
+from puzzle_tb_check.runner import (
     InputError,
     ResultWriter,
     expand_puzzle,
     pgn_snippet,
     read_rows,
 )
-from puzzle_tb.schema import Category
-from puzzle_tb.verify import MalformedPuzzle, ReasonCode, Rejection
+from puzzle_tb_check.schema import Category
+from puzzle_tb_check.verify import MalformedPuzzle, ReasonCode, Rejection
 
 
 def _write(text: str) -> str:
@@ -80,7 +80,7 @@ class ResultWriterTest(unittest.TestCase):
     def test_three_unquoted_columns_cut_friendly(self) -> None:
         path = _write("")
         pgn = '[FEN "8/8/4k3/8/8/4K3/8/4Q3 b - - 0 1"] 1... Kd6 { NOT_UNIQUE:loss@1 }'
-        cli = "puzzle issue abc puzzle-tb:deadbeef:NOT_UNIQUE:loss@1"
+        cli = "puzzle issue abc puzzle-tb-check:deadbeef:NOT_UNIQUE:loss@1"
         try:
             with ResultWriter(path) as writer:
                 writer.write("abc", pgn, cli)

@@ -1,7 +1,7 @@
 """Pure verdict logic: tablebase results + themes -> rejections.
 
 No chess board, no network: a position is summarised as the played move's UCI
-plus the typed :class:`~puzzle_tb.schema.TablebaseResponse`, so this is trivially
+plus the typed :class:`~puzzle_tb_check.schema.TablebaseResponse`, so this is trivially
 unit-testable. An empty rejection list means the puzzle was not rejected by any
 known evidence.
 """

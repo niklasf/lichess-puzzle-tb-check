@@ -18,7 +18,7 @@ import aiohttp
 from .schema import MalformedResponse, TablebaseResponse, parse_response
 
 DEFAULT_ENDPOINT = "https://tablebase.lichess.ovh"
-_USER_AGENT = "lichess-puzzles-tb/0.1.0"
+_USER_AGENT = "puzzle-tb-check/0.1.0"
 _RATE_LIMIT_PAUSE = 60.0  # seconds to wait after an HTTP 429
 
 

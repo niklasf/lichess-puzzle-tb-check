@@ -222,7 +222,7 @@ async def _process_puzzle(
         rejections = verify_puzzle(puzzler_positions, puzzle.themes)
         if rejections:
             pgn = pgn_snippet(puzzle.fen, puzzle.moves, rejections)
-            cli = f"puzzle issue {puzzle.puzzle_id} puzzle-tb:{uid}:{rejections[0]}"
+            cli = f"puzzle issue {puzzle.puzzle_id} puzzle-tb-check:{uid}:{rejections[0]}"
             writer.write(puzzle.puzzle_id, pgn, cli)
             progress.rejected += 1
             progress.log(f"https://lichess.org/training/{puzzle.puzzle_id}: {pgn}")
