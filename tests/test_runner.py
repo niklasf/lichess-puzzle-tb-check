@@ -2,7 +2,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from puzzle_tb.runner import InputError, expand_puzzle, format_rejection, read_rows
+from puzzle_tb.runner import (
+    InputError,
+    ResultWriter,
+    expand_puzzle,
+    pgn_snippet,
+    read_rows,
+)
 from puzzle_tb.schema import Category
 from puzzle_tb.verify import MalformedPuzzle, ReasonCode, Rejection
 
@@ -49,28 +55,44 @@ class ExpandPuzzleTest(unittest.TestCase):
             expand_puzzle("8/8/4k3/8/8/4K3/8/4Q3 b - - 0 1", ["e6e6"])
 
 
-class FormatRejectionTest(unittest.TestCase):
-    def test_link_fen_and_comment(self) -> None:
-        line = format_rejection(
-            "xyz",
+class PgnSnippetTest(unittest.TestCase):
+    def test_fen_and_comment(self) -> None:
+        snippet = pgn_snippet(
             "8/8/4k3/8/8/4K3/8/4Q3 b - - 0 1",
             ["e6d6", "e3e4"],
             [Rejection(ReasonCode.NOT_UNIQUE, Category.LOSS, 1)],
         )
         self.assertEqual(
-            line,
-            'https://lichess.org/training/xyz: '
+            snippet,
             '[FEN "8/8/4k3/8/8/4K3/8/4Q3 b - - 0 1"] 1... Kd6 2. Ke4 { NOT_UNIQUE:loss@1 }',
         )
 
     def test_comment_on_later_move(self) -> None:
-        line = format_rejection(
-            "p",
+        snippet = pgn_snippet(
             "8/8/8/8/4k3/8/8/R3K3 b - - 0 1",
             ["e4e5", "e1e2", "e5e6", "e2e3"],
             [Rejection(ReasonCode.NOT_WINNING, Category.DRAW, 3)],
         )
-        self.assertTrue(line.endswith("3. Ke3 { NOT_WINNING:draw@3 }"), line)
+        self.assertTrue(snippet.endswith("3. Ke3 { NOT_WINNING:draw@3 }"), snippet)
+
+
+class ResultWriterTest(unittest.TestCase):
+    def test_three_unquoted_columns_cut_friendly(self) -> None:
+        path = _write("")
+        pgn = '[FEN "8/8/4k3/8/8/4K3/8/4Q3 b - - 0 1"] 1... Kd6 { NOT_UNIQUE:loss@1 }'
+        cli = "puzzle issue abc puzzle-tb:deadbeef:NOT_UNIQUE:loss@1"
+        try:
+            with ResultWriter(path) as writer:
+                writer.write("abc", pgn, cli)
+                writer.write("ok1", "", "")
+            lines = Path(path).read_text(encoding="utf-8").splitlines()
+        finally:
+            Path(path).unlink()
+        self.assertEqual(lines[0], "PuzzleId,PGN,CliCommand")
+        # No csv quoting added around the FEN's double-quotes; cut -f3 yields CliCommand.
+        self.assertEqual(lines[1], f"abc,{pgn},{cli}")
+        self.assertEqual(lines[1].split(",")[-1], cli)
+        self.assertEqual(lines[2], "ok1,,")
 
 
 if __name__ == "__main__":

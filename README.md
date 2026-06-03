@@ -30,6 +30,21 @@ Verification runs are **resumable**: any `PuzzleId` already present in `--out`
 is skipped. So interrupt with Ctrl-C or check new puzzles from an updated
 database at any time.
 
+## Output
+
+The `--out` CSV has columns `PuzzleId,PGN,CliCommand`, both empty for valid
+puzzles. For a rejected puzzle, `PGN` is an analysis snippet
+(`[FEN "..."] 1. e4 { NOT_UNIQUE:draw@1 }`) and `CliCommand` is a ready-to-run
+`puzzle issue …` command tagged with this run's id. Rejections are also printed to
+stdout live as a clickable training link.
+
+No field contains a comma, so columns extract with `cut`. For example, the CLI
+commands for all rejected puzzles (skip the header, drop empty rows):
+
+```sh
+tail -n +2 report.csv | cut -d, -f3 | grep .
+```
+
 ## Rejection reasons
 
 | Code | Meaning |

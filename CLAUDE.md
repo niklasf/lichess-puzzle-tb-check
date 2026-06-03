@@ -128,12 +128,15 @@ move (first in best-first order) and `i` is the move index in `Moves`.
 
 ## Output & run behaviour
 
-- `--out` CSV: `PuzzleId,Reasons` (space-separated codes; **empty = not rejected**).
-  No fingerprints/timestamps. Flushed after every puzzle.
-- **Resume:** skip any `PuzzleId` already in `--out`. An updated DB only verifies new
-  puzzles. Interrupt (Ctrl-C) loses at most the in-flight puzzles.
-- **stdout:** each rejected puzzle, one line, as a training link + PGN snippet with the
-  reason as a `{ … }` comment on the offending move (`format_rejection`).
+- `--out` CSV: `PuzzleId,PGN,CliCommand` (`PGN`/`CliCommand` empty for valid puzzles).
+  `PGN` is `pgn_snippet` = `[FEN "..."] <movetext>` with each rejection as a `{ … }`
+  comment. `CliCommand` = `puzzle issue {id} puzzle-tb:{uid}:{first_reason}`, where
+  `uid = secrets.token_hex(4)` identifies the run. Written by plain comma-join (no
+  `csv` quoting): fields never contain commas/newlines, so it stays `cut`-friendly
+  (`cut -d, -f3` → CliCommand). No fingerprints/timestamps. Flushed after every puzzle.
+- **Resume:** skip any `PuzzleId` already in `--out` (col 0). An updated DB only verifies
+  new puzzles. Interrupt (Ctrl-C) loses at most the in-flight puzzles.
+- **stdout:** each rejected puzzle, one line: `https://lichess.org/training/{id}: {pgn}`.
 - **stderr:** always-on progress (bar, `verified/s`, `req/s`, ETA) + final summary.
   Throughput is averaged over a sliding 15s window; ETA uses the windowed row rate
   (so the post-resume skip burst doesn't skew it). `verified/s` = puzzles that got a

@@ -12,6 +12,7 @@ import asyncio
 import compression.zstd as zstd
 import csv
 import os
+import secrets
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
@@ -132,14 +133,12 @@ def expand_puzzle(fen: str, moves: list[str]) -> list[tuple[int, str, str, bool]
     return positions
 
 
-def format_rejection(
-    puzzle_id: str, fen: str, moves: list[str], rejections: list[Rejection]
-) -> str:
-    """Render a rejected puzzle as a training link plus a PGN-style snippet.
+def pgn_snippet(fen: str, moves: list[str], rejections: list[Rejection]) -> str:
+    """A ``[FEN "..."] <SAN movetext>`` snippet for analysis.
 
     Rejections are attached as ``{ ... }`` comments on the move they refer to, e.g.::
 
-        https://lichess.org/training/abc: [FEN "..."] 45...Re1+ 46. Nf3 { NOT_UNIQUE:loss@5 } 46... Nf6
+        [FEN "..."] 45...Re1+ 46. Nf3 { NOT_UNIQUE:loss@5 } 46... Nf6
     """
     by_index: dict[int, list[Rejection]] = {}
     for rejection in rejections:
@@ -167,22 +166,27 @@ def format_rejection(
     movetext = game.accept(exporter).strip()
     if movetext.endswith("*"):  # drop the trailing PGN result token
         movetext = movetext[:-1].strip()
-    return f'https://lichess.org/training/{puzzle_id}: [FEN "{fen}"] {movetext}'
+    return f'[FEN "{fen}"] {movetext}'
 
 
 class ResultWriter(AbstractContextManager["ResultWriter"]):
-    """Appends ``PuzzleId,Reasons`` rows, flushing after each write."""
+    """Appends ``PuzzleId,PGN,CliCommand`` rows, flushing after each write.
+
+    Fields are comma- and newline-free by construction, so rows are joined plainly
+    rather than via ``csv`` -- this keeps the file ``cut``-friendly and avoids
+    quoting the double-quotes inside the PGN's FEN tag. ``pgn`` and ``cli_command``
+    are empty for valid puzzles.
+    """
 
     def __init__(self, path: str) -> None:
         is_new = not os.path.exists(path) or os.path.getsize(path) == 0
         self._handle = open(path, "at", encoding="utf-8", newline="")
-        self._writer = csv.writer(self._handle)
         if is_new:
-            self._writer.writerow(["PuzzleId", "Reasons"])
+            self._handle.write("PuzzleId,PGN,CliCommand\n")
             self._handle.flush()
 
-    def write(self, puzzle_id: str, rejections: list[Rejection]) -> None:
-        self._writer.writerow([puzzle_id, " ".join(str(r) for r in rejections)])
+    def write(self, puzzle_id: str, pgn: str, cli_command: str) -> None:
+        self._handle.write(f"{puzzle_id},{pgn},{cli_command}\n")
         self._handle.flush()
 
     def __exit__(
@@ -200,6 +204,7 @@ async def _process_puzzle(
     writer: ResultWriter,
     progress: Progress,
     semaphore: asyncio.Semaphore,
+    uid: str,
 ) -> None:
     try:
         responses = await asyncio.gather(
@@ -214,12 +219,15 @@ async def _process_puzzle(
             )
             for (index, uci, _, capture_seen), response in zip(puzzle.positions, responses)
         ]
-        reasons = verify_puzzle(puzzler_positions, puzzle.themes)
-        writer.write(puzzle.puzzle_id, reasons)
-        if reasons:
+        rejections = verify_puzzle(puzzler_positions, puzzle.themes)
+        if rejections:
+            pgn = pgn_snippet(puzzle.fen, puzzle.moves, rejections)
+            cli = f"puzzle issue {puzzle.puzzle_id} puzzle-tb:{uid}:{rejections[0]}"
+            writer.write(puzzle.puzzle_id, pgn, cli)
             progress.rejected += 1
-            progress.log(format_rejection(puzzle.puzzle_id, puzzle.fen, puzzle.moves, reasons))
+            progress.log(f"https://lichess.org/training/{puzzle.puzzle_id}: {pgn}")
         else:
+            writer.write(puzzle.puzzle_id, "", "")
             progress.valid += 1
     finally:
         semaphore.release()
@@ -239,6 +247,7 @@ async def run(config: Config) -> None:
     """Execute a full verification run. Raises FatalTablebaseError on giving up."""
     done = load_done(config.output_path)
     total = config.limit if config.limit is not None else count_rows(config.input_path)
+    uid = secrets.token_hex(4)  # identifies this run in emitted CLI commands
 
     async with TablebaseClient(
         config.endpoint,
@@ -272,7 +281,7 @@ async def run(config: Config) -> None:
                                 continue
                             await semaphore.acquire()
                             group.create_task(
-                                _process_puzzle(client, puzzle, writer, progress, semaphore)
+                                _process_puzzle(client, puzzle, writer, progress, semaphore, uid)
                             )
                 except* (FatalTablebaseError, InputError, MalformedPuzzle) as group_error:
                     # Surface a single, plain error for the CLI to report.
