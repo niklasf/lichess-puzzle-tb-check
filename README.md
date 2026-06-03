@@ -41,7 +41,6 @@ database at any time.
 | `EQUALITY_HAS_WIN:<cat>` | an `equality` puzzle where a winning move exists |
 | `EQUALITY_NOT_DRAW:<cat>` | an `equality` puzzle whose played move does not draw |
 | `DTM_MISMATCH:<dtm>` | a `mateInX` puzzle whose DTM does not match the expected mate distance (exact for mateIn1–4; a lower bound for mateIn5 = "5 or more") |
-| `MALFORMED` | a recorded move is illegal / not offered by the tablebase |
 
 ## Tablebase coverage
 
@@ -65,4 +64,3 @@ reject a puzzle. An `unknown` move never rejects (nor confirms) — but incomple
 information can still suffice (two known winning moves prove non-uniqueness
 regardless of unknown moves). The precise category is always recorded in each
 reason, so the policy can be revisited later without re-querying.
-```

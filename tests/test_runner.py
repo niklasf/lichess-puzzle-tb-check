@@ -2,7 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from puzzle_tb.runner import InputError, format_rejection, read_rows
+from puzzle_tb.runner import InputError, expand_puzzle, format_rejection, read_rows
+from puzzle_tb.verify import MalformedPuzzle
 
 
 def _write(text: str) -> str:
@@ -39,6 +40,12 @@ class ReadRowsTest(unittest.TestCase):
                 list(read_rows(path))
         finally:
             Path(path).unlink()
+
+
+class ExpandPuzzleTest(unittest.TestCase):
+    def test_illegal_move_is_fatal(self) -> None:
+        with self.assertRaises(MalformedPuzzle):
+            expand_puzzle("8/8/4k3/8/8/4K3/8/4Q3 b - - 0 1", ["e6e6"])
 
 
 class FormatRejectionTest(unittest.TestCase):

@@ -29,6 +29,11 @@ from .schema import Move, TablebaseResponse
 _MATE_IN_RE = re.compile(r"^mateIn(\d+)$")
 
 
+class MalformedPuzzle(Exception):
+    """A puzzle's data is unusable (illegal move, or a move the tablebase did not
+    offer). Treated as fatal rather than a per-puzzle rejection."""
+
+
 @dataclass(frozen=True, slots=True)
 class PuzzlerPosition:
     """A single position where the puzzler is to move and must find the solution."""
@@ -100,7 +105,9 @@ def _verify_position(position: PuzzlerPosition, themes: PuzzleThemes) -> list[st
     moves = position.response.moves
     played = _find_played(moves, position.played_uci)
     if played is None:
-        return [f"MALFORMED@{i}"]
+        raise MalformedPuzzle(
+            f"played move {position.played_uci!r} not offered by the tablebase (move {i})"
+        )
 
     if themes.equality:
         # Equality puzzles go through the full check even for a mating move: a mate

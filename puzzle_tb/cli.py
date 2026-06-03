@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 from .runner import Config, InputError, run
 from .tablebase import DEFAULT_ENDPOINT, FatalTablebaseError
+from .verify import MalformedPuzzle
 
 
 def _build_config(argv: Sequence[str] | None) -> Config:
@@ -49,7 +50,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     config = _build_config(argv)
     try:
         asyncio.run(run(config))
-    except (InputError, OSError) as exc:
+    except (InputError, MalformedPuzzle, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     except FatalTablebaseError as exc:

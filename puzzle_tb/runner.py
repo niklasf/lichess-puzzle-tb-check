@@ -14,7 +14,7 @@ import csv
 import os
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from types import TracebackType
 from typing import IO
 
@@ -24,7 +24,7 @@ import chess.pgn
 from . import coverage
 from .progress import Progress
 from .tablebase import FatalTablebaseError, TablebaseClient
-from .verify import PuzzleThemes, PuzzlerPosition, verify_puzzle
+from .verify import MalformedPuzzle, PuzzleThemes, PuzzlerPosition, verify_puzzle
 
 
 # The only input columns we depend on; any others (Rating, GameUrl, ...) are
@@ -58,7 +58,6 @@ class _Puzzle:
     themes: PuzzleThemes
     # (move index, played uci, fen, capture seen earlier in the line)
     positions: list[tuple[int, str, str, bool]]
-    reasons: list[str] = field(default_factory=list)  # pre-filled malformed errors
 
 
 def _open_text(path: str) -> IO[str]:
@@ -108,33 +107,29 @@ def load_done(path: str) -> set[str]:
     return done
 
 
-def expand_puzzle(
-    fen: str, moves: list[str]
-) -> tuple[list[tuple[int, str, str, bool]], list[str]]:
-    """Return verifiable puzzler positions and any move-legality errors.
+def expand_puzzle(fen: str, moves: list[str]) -> list[tuple[int, str, str, bool]]:
+    """Return the verifiable puzzler positions of a puzzle.
 
     Each position is ``(move_index, played_uci, fen, capture_seen)`` for a
     puzzler-to-move position that is :func:`coverage.verifiable`. ``capture_seen``
     is whether any earlier move in the line (indices < move_index) was a capture.
     The opponent's setup move (index 0) and responses (even indices) are applied
-    but not verified.
+    but not verified. An illegal move raises :class:`MalformedPuzzle` (fatal).
     """
     board = chess.Board(fen)
     positions: list[tuple[int, str, str, bool]] = []
-    errors: list[str] = []
     capture_seen = False
     for index, uci in enumerate(moves):
         if index >= 1 and index % 2 == 1 and coverage.verifiable(board):
             positions.append((index, uci, board.fen(), capture_seen))
         try:
             move = board.parse_uci(uci)
-        except (ValueError, AssertionError):
-            errors.append(f"MALFORMED@{index}")
-            break
+        except (ValueError, AssertionError) as exc:
+            raise MalformedPuzzle(f"illegal move {uci!r} (move {index}) in {fen!r}") from exc
         if board.is_capture(move):
             capture_seen = True
         board.push(move)
-    return positions, errors
+    return positions
 
 
 def format_rejection(puzzle_id: str, fen: str, moves: list[str], reasons: list[str]) -> str:
@@ -206,23 +201,19 @@ async def _process_puzzle(
     semaphore: asyncio.Semaphore,
 ) -> None:
     try:
-        reasons = list(puzzle.reasons)
-        if puzzle.positions:
-            responses = await asyncio.gather(
-                *(client.probe(fen) for (_, _, fen, _) in puzzle.positions)
+        responses = await asyncio.gather(
+            *(client.probe(fen) for (_, _, fen, _) in puzzle.positions)
+        )
+        puzzler_positions = [
+            PuzzlerPosition(
+                move_index=index,
+                played_uci=uci,
+                response=response,
+                capture_seen=capture_seen,
             )
-            puzzler_positions = [
-                PuzzlerPosition(
-                    move_index=index,
-                    played_uci=uci,
-                    response=response,
-                    capture_seen=capture_seen,
-                )
-                for (index, uci, _, capture_seen), response in zip(
-                    puzzle.positions, responses
-                )
-            ]
-            reasons.extend(verify_puzzle(puzzler_positions, puzzle.themes))
+            for (index, uci, _, capture_seen), response in zip(puzzle.positions, responses)
+        ]
+        reasons = verify_puzzle(puzzler_positions, puzzle.themes)
         writer.write(puzzle.puzzle_id, reasons)
         if reasons:
             progress.rejected += 1
@@ -282,7 +273,7 @@ async def run(config: Config) -> None:
                             group.create_task(
                                 _process_puzzle(client, puzzle, writer, progress, semaphore)
                             )
-                except* (FatalTablebaseError, InputError) as group_error:
+                except* (FatalTablebaseError, InputError, MalformedPuzzle) as group_error:
                     # Surface a single, plain error for the CLI to report.
                     raise group_error.exceptions[0] from None
         finally:
@@ -301,8 +292,8 @@ def _prepare(row: dict[str, str], done: set[str]) -> _Puzzle | None:
     moves = row["Moves"].split()
     if not coverage.cheap_gate(fen, len(moves)):
         return None
-    positions, errors = expand_puzzle(fen, moves)
-    if not positions and not errors:
+    positions = expand_puzzle(fen, moves)
+    if not positions:
         return None
     return _Puzzle(
         puzzle_id=puzzle_id,
@@ -310,5 +301,4 @@ def _prepare(row: dict[str, str], done: set[str]) -> _Puzzle | None:
         moves=moves,
         themes=PuzzleThemes.parse(row["Themes"]),
         positions=positions,
-        reasons=errors,
     )

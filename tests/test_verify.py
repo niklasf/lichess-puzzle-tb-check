@@ -5,6 +5,7 @@ from puzzle_tb.schema import Category, Move, TablebaseResponse
 from puzzle_tb.verify import (
     AtLeastMate,
     ExactMate,
+    MalformedPuzzle,
     MateRequirement,
     PuzzleThemes,
     PuzzlerPosition,
@@ -178,9 +179,10 @@ class UnknownHandlingTest(unittest.TestCase):
         pos = position(1, "zzzz", [mv("a1a8", Category.LOSS), mv("zzzz", Category.UNKNOWN)])
         self.assertEqual(reasons(pos), ["WRONG_MOVE:loss@1"])
 
-    def test_played_move_not_listed_is_malformed(self) -> None:
+    def test_played_move_not_listed_is_fatal(self) -> None:
         pos = position(1, "h1h8", [mv("a1a8", Category.LOSS)])
-        self.assertEqual(reasons(pos), ["MALFORMED@1"])
+        with self.assertRaises(MalformedPuzzle):
+            reasons(pos)
 
 
 class EqualityPuzzleTest(unittest.TestCase):

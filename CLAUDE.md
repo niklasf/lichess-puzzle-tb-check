@@ -118,9 +118,10 @@ j-th puzzler move the remaining count is `X - j + 1`, so expected DTM = `2*(X-j+
 Exact: `dtm == expected`; lower bound: `dtm >= expected`; else `DTM_MISMATCH:<dtm>`.
 DTM is only available ≤5 pieces, so it's skipped when absent.
 
-`MALFORMED@i` if a recorded move is illegal. Every reason is `CODE:detail@i` where
-`i` is the move index in `Moves` and `detail` is the exact category/DTM (the strongest
-relevant move, first in best-first order).
+An illegal move, or a played move the tablebase doesn't offer, is **fatal**
+(`MalformedPuzzle`) — not a per-puzzle rejection. Every reason is `CODE:detail@i`
+where `i` is the move index in `Moves` and `detail` is the exact category/DTM (the
+strongest relevant move, first in best-first order).
 
 ## Output & run behaviour
 
